@@ -89,6 +89,9 @@ func renameUser(ctx context.Context, u *user_model.User, newUserName string, doe
 	if err := user_model.IsUsableUsername(newUserName); err != nil {
 		return err
 	}
+	if err := user_model.CheckSingleOwnerNameConflict(ctx, newUserName); err != nil { // fork: single-owner mode
+		return err
+	}
 
 	// Check if the new username can be claimed.
 	if !doerIsAdmin {

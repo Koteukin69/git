@@ -736,6 +736,9 @@ func createUser(ctx context.Context, u *User, createdByAdmin bool, overwriteDefa
 	} else if err := IsUsableUsername(u.Name); err != nil {
 		return err
 	}
+	if err := CheckSingleOwnerNameConflict(ctx, u.Name); err != nil { // fork: single-owner mode
+		return err
+	}
 
 	// Check if the new username can be claimed.
 	// Skip this check if done by an admin.

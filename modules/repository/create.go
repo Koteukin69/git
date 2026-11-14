@@ -35,6 +35,9 @@ func CreateRepositoryByExample(ctx context.Context, doer, u *user_model.User, re
 	if err = repo_model.IsUsableRepoName(repo.Name); err != nil {
 		return err
 	}
+	if err = repo_model.CheckSingleOwnerRepoName(ctx, u.ID, repo.Name); err != nil { // fork: single-owner mode
+		return err
+	}
 
 	has, err := repo_model.IsRepositoryModelExist(ctx, u, repo.Name)
 	if err != nil {
