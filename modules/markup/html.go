@@ -23,6 +23,7 @@ import (
 	"forgejo.org/modules/references"
 	"forgejo.org/modules/regexplru"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/templates/vars"
 	"forgejo.org/modules/translation"
 	"forgejo.org/modules/util"
@@ -964,9 +965,9 @@ func issueIndexPatternProcessor(ctx *RenderContext, node *html.Node) {
 				path = "pulls"
 			}
 			if ref.Owner == "" {
-				link = createLink(util.URLJoin(ctx.Links.Prefix(), ctx.Metas["user"], ctx.Metas["repo"], path, ref.Issue), reftext, "ref-issue")
+				link = createLink(util.URLJoin(ctx.Links.Prefix(), singleowner.RepoRelPath(ctx.Metas["user"], ctx.Metas["repo"]), path, ref.Issue), reftext, "ref-issue")
 			} else {
-				link = createLink(util.URLJoin(ctx.Links.Prefix(), ref.Owner, ref.Name, path, ref.Issue), reftext, "ref-issue")
+				link = createLink(util.URLJoin(ctx.Links.Prefix(), singleowner.RepoRelPath(ref.Owner, ref.Name), path, ref.Issue), reftext, "ref-issue")
 			}
 		}
 
@@ -1005,7 +1006,7 @@ func commitCrossReferencePatternProcessor(ctx *RenderContext, node *html.Node) {
 		}
 
 		reftext := ref.Owner + "/" + ref.Name + "@" + base.ShortSha(ref.CommitSha)
-		link := createLink(util.URLJoin(ctx.Links.Prefix(), ref.Owner, ref.Name, "commit", ref.CommitSha), reftext, "commit")
+		link := createLink(util.URLJoin(ctx.Links.Prefix(), singleowner.RepoRelPath(ref.Owner, ref.Name), "commit", ref.CommitSha), reftext, "commit")
 
 		replaceContent(node, ref.RefLocation.Start, ref.RefLocation.End, link)
 		node = node.NextSibling.NextSibling
@@ -1408,7 +1409,7 @@ func hashCurrentPatternProcessor(ctx *RenderContext, node *html.Node) {
 			continue
 		}
 
-		link := util.URLJoin(ctx.Links.Prefix(), ctx.Metas["user"], ctx.Metas["repo"], "commit", hash)
+		link := util.URLJoin(ctx.Links.Prefix(), singleowner.RepoRelPath(ctx.Metas["user"], ctx.Metas["repo"]), "commit", hash)
 		replaceContent(node, m[2], m[3], createCodeLink(link, base.ShortSha(hash), "commit"))
 		start = 0
 		node = node.NextSibling.NextSibling

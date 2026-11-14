@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"path"
 	"slices"
 	"strconv"
@@ -29,6 +28,7 @@ import (
 	"forgejo.org/modules/json"
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/structs"
 	"forgejo.org/modules/timeutil"
 
@@ -306,12 +306,12 @@ func (a *Action) ShortRepoPath(ctx context.Context) string {
 // GetRepoLink returns relative link to action repository.
 func (a *Action) GetRepoLink(ctx context.Context) string {
 	// path.Join will skip empty strings
-	return path.Join(setting.AppSubURL, "/", url.PathEscape(a.GetRepoUserName(ctx)), url.PathEscape(a.GetRepoName(ctx)))
+	return path.Join(setting.AppSubURL, "/", singleowner.RepoPath(a.GetRepoUserName(ctx), a.GetRepoName(ctx))) // fork: single-owner mode
 }
 
 // GetRepoAbsoluteLink returns the absolute link to action repository.
 func (a *Action) GetRepoAbsoluteLink(ctx context.Context) string {
-	return setting.AppURL + url.PathEscape(a.GetRepoUserName(ctx)) + "/" + url.PathEscape(a.GetRepoName(ctx))
+	return setting.AppURL + singleowner.RepoPath(a.GetRepoUserName(ctx), a.GetRepoName(ctx)) // fork: single-owner mode
 }
 
 func (a *Action) loadComment(ctx context.Context) (err error) {

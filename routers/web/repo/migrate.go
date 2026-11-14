@@ -6,7 +6,6 @@ package repo
 
 import (
 	"net/http"
-	"net/url"
 	"strings"
 
 	"forgejo.org/models"
@@ -19,6 +18,7 @@ import (
 	"forgejo.org/modules/lfs"
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/structs"
 	"forgejo.org/modules/util"
 	"forgejo.org/modules/web"
@@ -248,7 +248,7 @@ func MigratePost(ctx *context.Context) {
 
 	err = task.MigrateRepository(ctx, ctx.Doer, ctxUser, opts)
 	if err == nil {
-		ctx.Redirect(ctxUser.HomeLink() + "/" + url.PathEscape(opts.RepoName))
+		ctx.Redirect(setting.AppSubURL + "/" + singleowner.RepoPath(ctxUser.Name, opts.RepoName)) // fork: single-owner mode
 		return
 	}
 

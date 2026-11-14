@@ -49,6 +49,7 @@ import (
 	release_service "forgejo.org/services/release"
 	repo_service "forgejo.org/services/repository"
 	"forgejo.org/services/repository/archiver"
+	singleowner_service "forgejo.org/services/singleowner"
 	"forgejo.org/services/stats"
 	"forgejo.org/services/task"
 	"forgejo.org/services/uinotification"
@@ -141,6 +142,7 @@ func InitWebInstalled(ctx context.Context) {
 	mustInit(release_service.Init)
 
 	mustInitCtx(ctx, models.Init)
+	mustInitCtx(ctx, singleowner_service.Init) // fork: single-owner mode
 	mustInitCtx(ctx, auth_model.Init)
 	mustInitCtx(ctx, repo_service.Init)
 

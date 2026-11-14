@@ -32,6 +32,7 @@ import (
 	"forgejo.org/modules/markup"
 	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/typesniffer"
 	"forgejo.org/modules/util"
@@ -87,12 +88,12 @@ func setCompareContext(ctx *context.Context, before, head *git.Commit, headOwner
 
 // SourceCommitURL creates a relative URL for a commit in the given repository
 func SourceCommitURL(owner, name string, commit *git.Commit) string {
-	return setting.AppSubURL + "/" + url.PathEscape(owner) + "/" + url.PathEscape(name) + "/src/commit/" + url.PathEscape(commit.ID.String())
+	return setting.AppSubURL + "/" + singleowner.RepoPath(owner, name) + "/src/commit/" + url.PathEscape(commit.ID.String()) // fork: single-owner mode
 }
 
 // RawCommitURL creates a relative URL for the raw commit in the given repository
 func RawCommitURL(owner, name string, commit *git.Commit) string {
-	return setting.AppSubURL + "/" + url.PathEscape(owner) + "/" + url.PathEscape(name) + "/raw/commit/" + url.PathEscape(commit.ID.String())
+	return setting.AppSubURL + "/" + singleowner.RepoPath(owner, name) + "/raw/commit/" + url.PathEscape(commit.ID.String()) // fork: single-owner mode
 }
 
 // setPathsCompareContext sets context data for source and raw paths

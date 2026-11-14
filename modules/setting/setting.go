@@ -129,6 +129,7 @@ func loadCommonSettingsFrom(cfg ConfigProvider) error {
 	}
 	loadTimeFrom(cfg)
 	loadRepositoryFrom(cfg)
+	loadSingleOwnerFrom(cfg) // fork: single-owner mode
 	if err := loadAvatarsFrom(cfg); err != nil {
 		return err
 	}

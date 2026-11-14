@@ -15,6 +15,7 @@ import (
 	"forgejo.org/modules/web/middleware"
 	"forgejo.org/modules/web/routing"
 	"forgejo.org/services/context"
+	singleowner_service "forgejo.org/services/singleowner"
 
 	"code.forgejo.org/go-chi/session"
 	"github.com/chi-middleware/proxy"
@@ -25,6 +26,7 @@ import (
 func ProtocolMiddlewares() (handlers []any) {
 	// first, normalize the URL path
 	handlers = append(handlers, stripSlashesMiddleware)
+	handlers = append(handlers, singleowner_service.Middleware) // fork: single-owner mode, short /<repo> URLs
 
 	// prepare the ContextData and panic recovery
 	handlers = append(handlers, func(next http.Handler) http.Handler {
