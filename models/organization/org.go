@@ -286,6 +286,9 @@ func CreateOrganization(ctx context.Context, org *Organization, owner *user_mode
 	if err = user_model.IsUsableUsername(org.Name); err != nil {
 		return err
 	}
+	if err = user_model.CheckSingleOwnerNameConflict(ctx, org.Name); err != nil { // fork: single-owner mode
+		return err
+	}
 
 	isExist, err := user_model.IsUserExist(ctx, 0, org.Name)
 	if err != nil {

@@ -32,6 +32,7 @@ import (
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/structs"
 	"forgejo.org/modules/timeutil"
 	"forgejo.org/modules/util"
@@ -332,7 +333,7 @@ func (u *User) DashboardLink() string {
 	if u.IsOrganization() {
 		return u.OrganisationLink() + "/dashboard"
 	}
-	return setting.AppSubURL + "/"
+	return singleowner.DashboardLink() // fork: single-owner mode
 }
 
 // HomeLink returns the user or organization home page link.
@@ -733,6 +734,9 @@ func createUser(ctx context.Context, u *User, createdByAdmin bool, overwriteDefa
 			return err
 		}
 	} else if err := IsUsableUsername(u.Name); err != nil {
+		return err
+	}
+	if err := CheckSingleOwnerNameConflict(ctx, u.Name); err != nil { // fork: single-owner mode
 		return err
 	}
 

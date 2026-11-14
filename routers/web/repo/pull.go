@@ -13,7 +13,6 @@ import (
 	"html"
 	"html/template"
 	"net/http"
-	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -43,6 +42,7 @@ import (
 	"forgejo.org/modules/markup"
 	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/structs"
 	"forgejo.org/modules/util"
 	"forgejo.org/modules/web"
@@ -271,7 +271,7 @@ func ForkPost(ctx *context.Context) {
 		}
 		repo := repo_model.GetForkedRepo(ctx, ctxUser.ID, traverseParentRepo.ID)
 		if repo != nil {
-			ctx.Redirect(ctxUser.HomeLink() + "/" + url.PathEscape(repo.Name))
+			ctx.Redirect(setting.AppSubURL + "/" + singleowner.RepoPath(ctxUser.Name, repo.Name)) // fork: single-owner mode
 			return
 		}
 		if !traverseParentRepo.IsFork {
@@ -333,7 +333,7 @@ func ForkPost(ctx *context.Context) {
 	}
 
 	log.Trace("Repository forked[%d]: %s/%s", forkRepo.ID, ctxUser.Name, repo.Name)
-	ctx.Redirect(ctxUser.HomeLink() + "/" + url.PathEscape(repo.Name))
+	ctx.Redirect(setting.AppSubURL + "/" + singleowner.RepoPath(ctxUser.Name, repo.Name)) // fork: single-owner mode
 }
 
 func getPullInfo(ctx *context.Context) (issue *issues_model.Issue, ok bool) {

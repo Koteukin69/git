@@ -114,6 +114,10 @@ func transferOwnership(ctx context.Context, doer *user_model.User, newOwnerName 
 	}
 	newOwnerName = newOwner.Name // ensure capitalisation matches
 
+	if err := repo_model.CheckSingleOwnerRepoName(ctx, newOwner.ID, repo.Name); err != nil { // fork: single-owner mode
+		return err
+	}
+
 	// Check if new owner has repository with same name.
 	if has, err := repo_model.IsRepositoryModelOrDirExist(ctx, newOwner, repo.Name); err != nil {
 		return fmt.Errorf("IsRepositoryExist: %w", err)
@@ -293,6 +297,9 @@ func changeRepositoryName(ctx context.Context, repo *repo_model.Repository, newR
 	}
 
 	if err := repo.LoadOwner(ctx); err != nil {
+		return err
+	}
+	if err := repo_model.CheckSingleOwnerRepoName(ctx, repo.OwnerID, newRepoName); err != nil { // fork: single-owner mode
 		return err
 	}
 

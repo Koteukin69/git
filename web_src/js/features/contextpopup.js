@@ -1,6 +1,7 @@
 import {createApp} from 'vue';
 import {parseIssueHref} from '../utils.js';
 import {createTippy} from '../modules/tippy.js';
+import {issueInfoUrl} from './single-owner.js';
 
 export function initContextPopups() {
   const refIssues = document.querySelectorAll('.ref-issue');
@@ -14,7 +15,8 @@ export async function attachRefIssueContextPopup(refIssues) {
     }
 
     const {owner, repo, index} = parseIssueHref(refIssue.getAttribute('href'));
-    if (!owner) return;
+    const infoUrl = issueInfoUrl(refIssue.getAttribute('href')); // fork: single-owner mode
+    if (!infoUrl) return;
 
     const el = document.createElement('div');
     refIssue.parentNode.insertBefore(el, refIssue.nextSibling);
@@ -36,7 +38,7 @@ export async function attachRefIssueContextPopup(refIssues) {
       role: 'dialog',
       interactiveBorder: 5,
       onShow: () => {
-        el.firstChild.dispatchEvent(new CustomEvent('ce-load-context-popup', {detail: {owner, repo, index}}));
+        el.firstChild.dispatchEvent(new CustomEvent('ce-load-context-popup', {detail: {owner, repo, index, infoUrl}}));
       },
     });
   }

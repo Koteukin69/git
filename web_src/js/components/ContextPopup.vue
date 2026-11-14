@@ -94,7 +94,7 @@ export default {
       this.i18nErrorMessage = null;
 
       try {
-        const response = await GET(`${appSubUrl}/${data.owner}/${data.repo}/issues/${data.index}/info`);
+        const response = await GET(data.infoUrl ?? `${appSubUrl}/${data.owner}/${data.repo}/issues/${data.index}/info`); // fork: single-owner mode
         const respJson = await response.json();
         if (!response.ok) {
           this.i18nErrorMessage = respJson.message ?? i18n.network_error;

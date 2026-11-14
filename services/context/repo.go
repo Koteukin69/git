@@ -34,6 +34,7 @@ import (
 	"forgejo.org/modules/optional"
 	repo_module "forgejo.org/modules/repository"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/util"
 	asymkey_service "forgejo.org/services/asymkey"
 	redirect_service "forgejo.org/services/redirect"
@@ -354,12 +355,12 @@ func RedirectToRepo(ctx *Base, redirectRepoID int64) {
 		return
 	}
 
-	redirectPath := strings.Replace(
-		ctx.Req.URL.EscapedPath(),
+	redirectPath := singleowner.ShortenPath(strings.Replace( // fork: single-owner mode
+		singleowner.RoutedPath(ctx.Req), // fork: single-owner mode
 		url.PathEscape(ownerName)+"/"+url.PathEscape(previousRepoName),
 		url.PathEscape(repo.OwnerName)+"/"+url.PathEscape(repo.Name),
 		1,
-	)
+	))
 	if ctx.Req.URL.RawQuery != "" {
 		redirectPath += "?" + ctx.Req.URL.RawQuery
 	}
@@ -512,12 +513,12 @@ func RepoAssignment(ctx *Context) context.CancelFunc {
 		originalRepoName := ctx.Params(":reponame")
 		redirectRepoName := strings.TrimSuffix(repoName, ".wiki")
 		redirectRepoName += originalRepoName[len(redirectRepoName)+5:]
-		redirectPath := strings.Replace(
-			ctx.Req.URL.EscapedPath(),
+		redirectPath := singleowner.ShortenPath(strings.Replace( // fork: single-owner mode
+			singleowner.RoutedPath(ctx.Req), // fork: single-owner mode
 			url.PathEscape(userName)+"/"+url.PathEscape(originalRepoName),
 			url.PathEscape(userName)+"/"+url.PathEscape(redirectRepoName)+"/wiki",
 			1,
-		)
+		))
 		if ctx.Req.URL.RawQuery != "" {
 			redirectPath += "?" + ctx.Req.URL.RawQuery
 		}
@@ -555,7 +556,7 @@ func RepoAssignment(ctx *Context) context.CancelFunc {
 
 	ctx.Repo.RepoLink = repo.Link()
 	ctx.Data["RepoLink"] = ctx.Repo.RepoLink
-	ctx.Data["RepoRelPath"] = ctx.Repo.Owner.Name + "/" + ctx.Repo.Repository.Name
+	ctx.Data["RepoRelPath"] = singleowner.RepoRelPath(ctx.Repo.Owner.Name, ctx.Repo.Repository.Name) // fork: single-owner mode
 
 	if setting.Other.EnableFeed {
 		ctx.Data["EnableFeed"] = true

@@ -113,6 +113,9 @@ func CheckCreateRepository(ctx context.Context, doer, u *user_model.User, name s
 	if err := IsUsableRepoName(name); err != nil {
 		return err
 	}
+	if err := CheckSingleOwnerRepoName(ctx, u.ID, name); err != nil { // fork: single-owner mode
+		return err
+	}
 
 	has, err := IsRepositoryModelOrDirExist(ctx, u, name)
 	if err != nil {

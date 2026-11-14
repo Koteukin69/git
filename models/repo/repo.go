@@ -27,6 +27,7 @@ import (
 	"forgejo.org/modules/markup"
 	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/timeutil"
 	"forgejo.org/modules/translation"
@@ -337,7 +338,7 @@ func (repo *Repository) FullName() string {
 
 // HTMLURL returns the repository HTML URL
 func (repo *Repository) HTMLURL() string {
-	return setting.AppURL + url.PathEscape(repo.OwnerName) + "/" + url.PathEscape(repo.Name)
+	return setting.AppURL + singleowner.RepoPath(repo.OwnerName, repo.Name) // fork: single-owner mode
 }
 
 // SummaryCardURL returns the absolute URL to an image providing a summary of the repo
@@ -596,12 +597,12 @@ func (repo *Repository) RepoPath() string {
 
 // Link returns the repository relative url
 func (repo *Repository) Link() string {
-	return setting.AppSubURL + "/" + url.PathEscape(repo.OwnerName) + "/" + url.PathEscape(repo.Name)
+	return setting.AppSubURL + "/" + singleowner.RepoPath(repo.OwnerName, repo.Name) // fork: single-owner mode
 }
 
 // ComposeCompareURL returns the repository comparison URL
 func (repo *Repository) ComposeCompareURL(oldCommitID, newCommitID string) string {
-	return fmt.Sprintf("%s/%s/compare/%s...%s", url.PathEscape(repo.OwnerName), url.PathEscape(repo.Name), util.PathEscapeSegments(oldCommitID), util.PathEscapeSegments(newCommitID))
+	return fmt.Sprintf("%s/compare/%s...%s", singleowner.RepoPath(repo.OwnerName, repo.Name), util.PathEscapeSegments(oldCommitID), util.PathEscapeSegments(newCommitID)) // fork: single-owner mode
 }
 
 func (repo *Repository) ComposeBranchCompareURL(baseRepo *Repository, branchName string) string {
@@ -662,7 +663,7 @@ type CloneLink struct {
 
 // ComposeHTTPSCloneURL returns HTTPS clone URL based on given owner and repository name.
 func ComposeHTTPSCloneURL(owner, repo string) string {
-	return fmt.Sprintf("%s%s/%s.git", setting.AppURL, url.PathEscape(owner), url.PathEscape(repo))
+	return fmt.Sprintf("%s%s.git", setting.AppURL, singleowner.RepoPath(owner, repo)) // fork: single-owner mode
 }
 
 func ComposeSSHCloneURL(ownerName, repoName string) string {
@@ -672,7 +673,7 @@ func ComposeSSHCloneURL(ownerName, repoName string) string {
 	// non-standard port, it must use full URI
 	if setting.SSH.Port != 22 {
 		sshHost := net.JoinHostPort(sshDomain, strconv.Itoa(setting.SSH.Port))
-		return fmt.Sprintf("ssh://%s@%s/%s/%s.git", sshUser, sshHost, url.PathEscape(ownerName), url.PathEscape(repoName))
+		return fmt.Sprintf("ssh://%s@%s/%s.git", sshUser, sshHost, singleowner.RepoPath(ownerName, repoName)) // fork: single-owner mode
 	}
 
 	// for standard port, it can use a shorter URI (without the port)
@@ -681,9 +682,9 @@ func ComposeSSHCloneURL(ownerName, repoName string) string {
 		sshHost = "[" + sshHost + "]" // for IPv6 address, wrap it with brackets
 	}
 	if setting.Repository.UseCompatSSHURI {
-		return fmt.Sprintf("ssh://%s@%s/%s/%s.git", sshUser, sshHost, url.PathEscape(ownerName), url.PathEscape(repoName))
+		return fmt.Sprintf("ssh://%s@%s/%s.git", sshUser, sshHost, singleowner.RepoPath(ownerName, repoName)) // fork: single-owner mode
 	}
-	return fmt.Sprintf("%s@%s:%s/%s.git", sshUser, sshHost, url.PathEscape(ownerName), url.PathEscape(repoName))
+	return fmt.Sprintf("%s@%s:%s.git", sshUser, sshHost, singleowner.RepoPath(ownerName, repoName)) // fork: single-owner mode
 }
 
 func (repo *Repository) cloneLink(isWiki bool) *CloneLink {

@@ -15,7 +15,7 @@
 				{{if gt (len $.UserAndOrgForks) 1}}
 					href="#" data-modal="#fork-repo-modal"
 				{{else if eq (len $.UserAndOrgForks) 1}}
-					href="{{AppSubUrl}}/{{(index $.UserAndOrgForks 0).FullName}}"
+					href="{{(index $.UserAndOrgForks 0).Link}}"
 				{{/*else is not required here, because the button shouldn't link to any site if you can't create a fork*/}}
 				{{end}}
 			{{else if not $.UserAndOrgForks}}

@@ -110,6 +110,7 @@ func ServNoCommand(ctx *context.PrivateContext) {
 func ServCommand(ctx *context.PrivateContext) {
 	keyID := ctx.ParamsInt64(":keyid")
 	ownerName := ctx.Params(":owner")
+	ownerName = singleOwnerServOwner(ownerName) // fork: single-owner mode
 	repoName := ctx.Params(":repo")
 	mode := perm.AccessMode(ctx.FormInt("mode"))
 

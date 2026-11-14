@@ -16,6 +16,7 @@ import (
 
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/util"
 	"forgejo.org/modules/util/donotpanic"
 
@@ -272,14 +273,13 @@ func renderIFrame(ctx *RenderContext, output io.Writer) error {
 	// "allow-same-origin" should never be used, it leads to XSS attack, and it makes the JS in iframe can access parent window's config and CSRF token
 	// TODO: when using dark theme, if the rendered content doesn't have proper style, the default text color is black, which is not easy to read
 	_, err := io.WriteString(output, fmt.Sprintf(`
-<iframe src="%s/%s/%s/render/%s/%s"
+<iframe src="%s/%s/render/%s/%s"
 class="external-render"
 width="100%%" height="300" frameborder="0"
 sandbox="allow-scripts"
 ></iframe>`,
 		setting.AppSubURL,
-		url.PathEscape(ctx.Metas["user"]),
-		url.PathEscape(ctx.Metas["repo"]),
+		singleowner.RepoPath(ctx.Metas["user"], ctx.Metas["repo"]), // fork: single-owner mode
 		ctx.Metas["BranchNameSubURL"],
 		url.PathEscape(ctx.RelativePath),
 	))

@@ -13,6 +13,7 @@ import (
 
 	repo_model "forgejo.org/models/repo"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/util"
 	"forgejo.org/services/context"
 )
@@ -22,7 +23,7 @@ func goGet(ctx *context.Context) {
 		return
 	}
 
-	parts := strings.SplitN(ctx.Req.URL.EscapedPath(), "/", 4)
+	parts := strings.SplitN(singleowner.RoutedPath(ctx.Req), "/", 4) // fork: single-owner mode
 
 	if len(parts) < 3 {
 		return
@@ -56,7 +57,7 @@ func goGet(ctx *context.Context) {
 	if err == nil && len(repo.DefaultBranch) > 0 {
 		branchName = repo.DefaultBranch
 	}
-	prefix := setting.AppURL + path.Join(url.PathEscape(ownerName), url.PathEscape(repoName), "src", "branch", util.PathEscapeSegments(branchName))
+	prefix := setting.AppURL + path.Join(singleowner.RepoPath(ownerName, repoName), "src", "branch", util.PathEscapeSegments(branchName)) // fork: single-owner mode
 
 	appURL, _ := url.Parse(setting.AppURL)
 
@@ -66,6 +67,9 @@ func goGet(ctx *context.Context) {
 	}
 
 	goGetImport := context.ComposeGoGetImport(ownerName, trimmedRepoName)
+	if singleowner.IsShortRequest(ctx.Req) { // fork: single-owner mode, import path without owner
+		goGetImport = context.ComposeGoGetImport("", trimmedRepoName)
+	}
 
 	var cloneURL string
 	if setting.Repository.GoGetCloneURLProtocol == "ssh" {

@@ -221,6 +221,7 @@ func runServ(ctx context.Context, c *cli.Command) error {
 	}
 
 	rr := strings.SplitN(repoPath, "/", 2)
+	rr, repoPath, singleOwnerShort := singleOwnerServPath(rr, repoPath) // fork: single-owner mode
 	if len(rr) != 2 {
 		return fail(ctx, "Invalid repository path", "Invalid repository path: %v", repoPath)
 	}
@@ -274,6 +275,9 @@ func runServ(ctx context.Context, c *cli.Command) error {
 	results, extra := private.ServCommand(ctx, keyID, username, reponame, requestedMode, verb, lfsVerb)
 	if extra.HasError() {
 		return fail(ctx, extra.UserMsg, "ServCommand failed: %s", extra.Error)
+	}
+	if singleOwnerShort { // fork: single-owner mode, the owner may have been renamed
+		repoPath = strings.ToLower(results.OwnerName + "/" + rr[1])
 	}
 
 	// LFS token authentication

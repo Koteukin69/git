@@ -11,6 +11,7 @@ import (
 
 	"forgejo.org/modules/markup"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 )
 
 func init() {
@@ -46,10 +47,9 @@ func (Renderer) SanitizerRules() []setting.MarkupSanitizerRule {
 
 // Render implements markup.Renderer
 func (Renderer) Render(ctx *markup.RenderContext, _ io.Reader, output io.Writer) error {
-	rawURL := fmt.Sprintf("%s/%s/%s/raw/%s/%s",
+	rawURL := fmt.Sprintf("%s/%s/raw/%s/%s",
 		setting.AppSubURL,
-		url.PathEscape(ctx.Metas["user"]),
-		url.PathEscape(ctx.Metas["repo"]),
+		singleowner.RepoPath(ctx.Metas["user"], ctx.Metas["repo"]), // fork: single-owner mode
 		ctx.Metas["BranchNameSubURL"],
 		url.PathEscape(ctx.RelativePath),
 	)

@@ -16,6 +16,7 @@ import (
 	"forgejo.org/modules/optional"
 	"forgejo.org/modules/session"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/singleowner"
 	"forgejo.org/modules/web/middleware"
 	"forgejo.org/services/auth"
 	user_service "forgejo.org/services/user"
@@ -46,7 +47,7 @@ var (
 )
 
 func isGitRawOrAttachPath(req *http.Request) bool {
-	return gitRawOrAttachPathRe.MatchString(req.URL.Path)
+	return gitRawOrAttachPathRe.MatchString(singleowner.RoutedURLPath(req)) // fork: single-owner mode
 }
 
 func isGitRawOrAttachOrLFSPath(req *http.Request) bool {
@@ -54,13 +55,13 @@ func isGitRawOrAttachOrLFSPath(req *http.Request) bool {
 		return true
 	}
 	if setting.LFS.StartServer {
-		return lfsPathRe.MatchString(req.URL.Path)
+		return lfsPathRe.MatchString(singleowner.RoutedURLPath(req)) // fork: single-owner mode
 	}
 	return false
 }
 
 func isArchivePath(req *http.Request) bool {
-	return archivePathRe.MatchString(req.URL.Path)
+	return archivePathRe.MatchString(singleowner.RoutedURLPath(req)) // fork: single-owner mode
 }
 
 // handleSignIn clears existing session variables and stores new ones for the specified user object

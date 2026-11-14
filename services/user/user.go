@@ -35,12 +35,12 @@ import (
 
 // RenameUser renames a user
 func RenameUser(ctx context.Context, u *user_model.User, newUserName string) error {
-	return renameUser(ctx, u, newUserName, false)
+	return singleOwnerRenamed(u, renameUser(ctx, u, newUserName, false)) // fork: single-owner mode
 }
 
 // AdminRenameUser renames a user as an admin.
 func AdminRenameUser(ctx context.Context, u *user_model.User, newUserName string) error {
-	return renameUser(ctx, u, newUserName, true)
+	return singleOwnerRenamed(u, renameUser(ctx, u, newUserName, true)) // fork: single-owner mode
 }
 
 // CanUserRename returns if the given user can be renamed.
@@ -87,6 +87,9 @@ func renameUser(ctx context.Context, u *user_model.User, newUserName string, doe
 	}
 
 	if err := user_model.IsUsableUsername(newUserName); err != nil {
+		return err
+	}
+	if err := user_model.CheckSingleOwnerNameConflict(ctx, newUserName); err != nil { // fork: single-owner mode
 		return err
 	}
 
