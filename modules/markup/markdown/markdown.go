@@ -120,6 +120,8 @@ func SpecializedMarkdown() goldmark.Markdown {
 			goldmark.WithParserOptions(
 				parser.WithAttribute(),
 				parser.WithAutoHeadingID(),
+				// must run before the math `$` parsers
+				parser.WithInlineParsers(util.Prioritized(embedMarkerParser{}, 450)),
 				parser.WithASTTransformers(
 					util.Prioritized(&callout.GitHubLegacyCalloutTransformer{}, 8000),
 					util.Prioritized(&callout.GitHubCalloutTransformer{}, 9000),
@@ -136,6 +138,7 @@ func SpecializedMarkdown() goldmark.Markdown {
 			renderer.WithNodeRenderers(
 				util.Prioritized(callout.NewGitHubCalloutHTMLRenderer(), 10),
 				util.Prioritized(NewHTMLRenderer(), 10),
+				util.Prioritized(embedMarkerRenderer{}, 10),
 			),
 		)
 	})

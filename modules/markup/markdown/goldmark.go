@@ -63,6 +63,7 @@ func (g *ASTTransformer) Transform(node *ast.Document, reader text.Reader, pc pa
 		case *ast.Image:
 			g.transformImage(ctx, v)
 		case *ast.Link:
+			g.transformEmbed(ctx.Metas["mode"] == "document", v)
 			g.transformLink(ctx, v)
 		case *ast.List:
 			g.transformList(ctx, v, rc)
