@@ -313,6 +313,21 @@
   box-sizing: initial;
 }
 
+/* `$[name](link)` embeds, see web_src/js/markup/embed.js */
+.markup .markup-embed-frame {
+  display: block;
+  margin: 0.5em 0;
+}
+
+.markup .markup-embed-frame iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--border-radius);
+  background: var(--color-box-body);
+}
+
 /* this background ensures images can break <hr>. We can only do this on
    cases where the background is known and not transparent. */
 .markup.file-view img,

@@ -4,6 +4,7 @@ import {renderCodeCopy} from './codecopy.js';
 import {renderAsciicast} from './asciicast.js';
 import {renderExternal} from './external.js';
 import {initMarkupTasklist} from './tasklist.js';
+import {renderEmbed} from './embed.js';
 
 // code that runs for all markup content
 export function initMarkupContent() {
@@ -12,6 +13,7 @@ export function initMarkupContent() {
   renderCodeCopy();
   renderAsciicast();
   renderExternal();
+  renderEmbed();
 }
 
 // code that only runs for comments

@@ -320,7 +320,7 @@ func render(ctx *RenderContext, renderer Renderer, input io.Reader, output io.Wr
 		}()
 
 		wg.Go(func() {
-			err = donotpanic.SafeFuncWithError(func() error { return SanitizeReader(pr2, renderer.Name(), output) })
+			err = donotpanic.SafeFuncWithError(func() error { return sanitizeReader(pr2, renderer.Name(), ctx.Metas["mode"] == "document", output) })
 			_ = pr2.Close()
 		})
 	} else {

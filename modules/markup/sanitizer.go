@@ -20,6 +20,7 @@ import (
 // any modification to the underlying policies once it's been created.
 type Sanitizer struct {
 	defaultPolicy     *bluemonday.Policy
+	documentPolicy    *bluemonday.Policy
 	descriptionPolicy *bluemonday.Policy
 	rendererPolicies  map[string]*bluemonday.Policy
 	init              sync.Once
@@ -43,6 +44,7 @@ func NewSanitizer() {
 func InitializeSanitizer() {
 	sanitizer.rendererPolicies = map[string]*bluemonday.Policy{}
 	sanitizer.defaultPolicy = createDefaultPolicy()
+	sanitizer.documentPolicy = createDocumentPolicy()
 	sanitizer.descriptionPolicy = createRepoDescriptionPolicy()
 
 	for name, renderer := range renderers {
@@ -183,6 +185,17 @@ func createDefaultPolicy() *bluemonday.Policy {
 	return policy
 }
 
+// createDocumentPolicy returns the default policy plus what is only allowed in
+// markdown documents (READMEs, files, wiki pages), but not in comments.
+func createDocumentPolicy() *bluemonday.Policy {
+	policy := createDefaultPolicy()
+
+	// Links that the frontend turns into sandboxed iframes, see markdown/embed.go
+	policy.AllowAttrs("class").Matching(regexp.MustCompile(`^markup-embed$`)).OnElements("a")
+
+	return policy
+}
+
 // createRepoDescriptionPolicy returns a minimal more strict policy that is used for
 // repository descriptions.
 func createRepoDescriptionPolicy() *bluemonday.Policy {
@@ -234,10 +247,19 @@ func Sanitize(s string) string {
 
 // SanitizeReader sanitizes a Reader
 func SanitizeReader(r io.Reader, renderer string, w io.Writer) error {
+	return sanitizeReader(r, renderer, false, w)
+}
+
+// sanitizeReader sanitizes a Reader. isDocument selects the document policy
+// for the markdown renderer.
+func sanitizeReader(r io.Reader, renderer string, isDocument bool, w io.Writer) error {
 	NewSanitizer()
 	policy, exist := sanitizer.rendererPolicies[renderer]
 	if !exist {
 		policy = sanitizer.defaultPolicy
+		if isDocument && renderer == "markdown" {
+			policy = sanitizer.documentPolicy
+		}
 	}
 	return policy.SanitizeReaderToWriter(r, w)
 }
