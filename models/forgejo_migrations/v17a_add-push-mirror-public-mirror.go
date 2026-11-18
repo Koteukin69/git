@@ -19,7 +19,6 @@ func init() {
 func addPushMirrorPublicMirror(x *xorm.Engine) error {
 	type PushMirror struct {
 		PublicProvider     string `xorm:"VARCHAR(20) NOT NULL DEFAULT ''"`
-		PublicHTMLURL      string `xorm:"VARCHAR(2048)"`
 		PublicStars        int    `xorm:"NOT NULL DEFAULT 0"`
 		PublicForks        int    `xorm:"NOT NULL DEFAULT 0"`
 		PublicWatchers     int    `xorm:"NOT NULL DEFAULT 0"`
@@ -43,6 +42,7 @@ func addPushMirrorPublicMirror(x *xorm.Engine) error {
 		RepoID            int64              `xorm:"UNIQUE(s) NOT NULL"`
 		Source            string             `xorm:"VARCHAR(255) UNIQUE(s) NOT NULL"`
 		RemoteID          int64              `xorm:"UNIQUE(s) NOT NULL"`
+		IssueID           int64              `xorm:"NOT NULL DEFAULT 0"`
 		CommentID         int64              `xorm:"INDEX NOT NULL"`
 		RemoteUpdatedUnix timeutil.TimeStamp `xorm:"NOT NULL DEFAULT 0"`
 	}

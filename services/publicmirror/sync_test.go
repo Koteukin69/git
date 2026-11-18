@@ -15,8 +15,10 @@ import (
 	"forgejo.org/models/db"
 	issues_model "forgejo.org/models/issues"
 	repo_model "forgejo.org/models/repo"
+	"forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
+	"forgejo.org/modules/publicmirror"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/test"
 	"forgejo.org/modules/timeutil"
@@ -96,7 +98,7 @@ func setupSync(t *testing.T, flavor string) *syncFixture {
 	}
 	up.issues = []*Issue{
 		{Number: 3, Title: "collides with a local issue", Body: "body of 3", State: "open", User: octocat, CreatedAt: created, UpdatedAt: created},
-		{Number: 100, Title: "a bug", Body: "it does not work", State: "open", User: octocat, CreatedAt: created, UpdatedAt: created.Add(time.Minute)},
+		{Number: 100, Title: "a bug", Body: "it does not work", State: "open", User: octocat, CreatedAt: created, UpdatedAt: created.Add(time.Minute), HTMLURL: "javascript:alert(document.domain)", Comments: 1},
 		{Number: 7, Title: "add a feature", Body: "please merge", State: "open", User: contributor, CreatedAt: created, UpdatedAt: created.Add(2 * time.Minute), PullRequest: &PullRequestRef{}},
 		{Number: 8, Title: "merged one", State: "closed", User: contributor, CreatedAt: created, UpdatedAt: created.Add(3 * time.Minute), ClosedAt: &merged, PullRequest: &PullRequestRef{Merged: true, MergedAt: &merged}},
 	}
@@ -154,6 +156,12 @@ func testSyncPublicMirror(t *testing.T, flavor string) {
 	f := setupSync(t, flavor)
 	ctx := t.Context()
 
+	// a disabled unit hides the synced items but does not stop the sync, they show up once it is enabled again
+	_, err := db.GetEngine(ctx).Delete(&repo_model.RepoUnit{RepoID: f.repo.ID, Type: unit.TypeIssues})
+	require.NoError(t, err)
+	// GitHub account 101 is linked to user2, but this upstream is not github.com: its IDs must not be trusted
+	require.NoError(t, db.Insert(ctx, &user_model.ExternalLoginUser{ExternalID: "101", UserID: 2, LoginSourceID: 1, Provider: "github"}))
+
 	localIssue3 := unittest.AssertExistsAndLoadBean(t, &issues_model.Issue{RepoID: f.repo.ID, Index: 3})
 	unittest.AssertNotExistsBean(t, &issues_model.Issue{RepoID: f.repo.ID, Index: 100})
 	issuesBefore := unittest.GetCount(t, &issues_model.Issue{RepoID: f.repo.ID})
@@ -184,6 +192,9 @@ func testSyncPublicMirror(t *testing.T, flavor string) {
 		assert.EqualValues(t, user_model.GhostUserID, bug.PosterID)
 		assert.Equal(t, "octocat", bug.OriginalAuthor)
 		assert.EqualValues(t, 101, bug.OriginalAuthorID)
+		mapping, err := repo_model.GetPublicMirrorIssueByIssueID(ctx, bug.ID)
+		require.NoError(t, err)
+		assert.Equal(t, f.upstream.server.URL+"/owner/repo/issues/100", mapping.RemoteURL, "a hostile html_url is replaced")
 		assert.False(t, bug.IsClosed)
 		assert.False(t, bug.IsPull)
 
@@ -254,6 +265,7 @@ func testSyncPublicMirror(t *testing.T, flavor string) {
 		bug := f.upstream.issues[1]
 		bug.State, bug.Title, bug.UpdatedAt, bug.ClosedAt = "closed", "a bug (fixed)", later, &later
 		f.upstream.comments[0].Body, f.upstream.comments[0].UpdatedAt = "me too, edited", later
+		bug.Comments = 2
 		f.upstream.comments = append(f.upstream.comments, &Comment{ID: 9004, Body: "new comment", User: &User{ID: 101, Login: "octocat"}, HTMLURL: "https://example.com/owner/repo/issues/100#issuecomment-9004", CreatedAt: later, UpdatedAt: later})
 		f.upstream.repoInfo["stargazers_count"], f.upstream.repoInfo["stars_count"] = 43, 43
 		unlock()
@@ -328,6 +340,10 @@ func testSyncPublicMirror(t *testing.T, flavor string) {
 		again := f.issue(t, 100)
 		assert.NotEqual(t, issue.ID, again.ID)
 		assert.Equal(t, "a bug (fixed)", again.Title)
+		// its old comments are older than the cursor, they are fetched for this issue
+		assert.Equal(t, 2, again.NumComments)
+		unittest.AssertExistsAndLoadBean(t, &issues_model.Comment{IssueID: again.ID, Content: "me too, edited"})
+		unittest.AssertExistsAndLoadBean(t, &issues_model.Comment{IssueID: again.ID, Content: "new comment"})
 	})
 
 	t.Run("errors are saved and the cursor is kept", func(t *testing.T) {
@@ -396,4 +412,25 @@ func TestSetPushMirrorPublicProvider(t *testing.T) {
 		ids = append(ids, m.ID)
 	}
 	assert.ElementsMatch(t, []int64{b.ID, other.ID}, ids)
+}
+
+func TestPosterMapping(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+	ctx := t.Context()
+	require.NoError(t, db.Insert(ctx, &user_model.ExternalLoginUser{ExternalID: "4242", UserID: 2, LoginSourceID: 1, Provider: "github"}))
+
+	for remote, expected := range map[string]int64{
+		"https://github.com/o/r":      2, // the "github" login source authenticates against github.com
+		"https://ghe.example.com/o/r": 0, // GitHub Enterprise: another user namespace
+		"http://127.0.0.1:1234/o/r":   0, // anything else could be a fake server choosing IDs
+	} {
+		upstream, err := publicmirror.Parse(publicmirror.ProviderGitHub, remote)
+		require.NoError(t, err)
+		s := &syncer{upstream: upstream, users: map[int64]int64{}}
+		assert.Equal(t, expected, s.posterID(ctx, &User{ID: 4242, Login: "someone"}), remote)
+	}
+	upstream, err := publicmirror.Parse(publicmirror.ProviderForgejo, "https://codeberg.org/o/r")
+	require.NoError(t, err)
+	s := &syncer{upstream: upstream, users: map[int64]int64{}}
+	assert.Zero(t, s.posterID(ctx, &User{ID: 4242, Login: "someone"}))
 }

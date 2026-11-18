@@ -66,6 +66,7 @@ type PublicMirrorComment struct {
 	RepoID            int64              `xorm:"UNIQUE(s) NOT NULL"`
 	Source            string             `xorm:"VARCHAR(255) UNIQUE(s) NOT NULL"`
 	RemoteID          int64              `xorm:"UNIQUE(s) NOT NULL"`
+	IssueID           int64              `xorm:"NOT NULL DEFAULT 0"` // local issue the comment was synced into
 	CommentID         int64              `xorm:"INDEX NOT NULL"`
 	RemoteUpdatedUnix timeutil.TimeStamp `xorm:"NOT NULL DEFAULT 0"`
 }
@@ -109,7 +110,7 @@ func SetPushMirrorPublicProvider(ctx context.Context, m *PushMirror, provider st
 
 // UpdatePushMirrorPublicStatus saves the public mirror sync status (counters, cursor and error).
 func UpdatePushMirrorPublicStatus(ctx context.Context, m *PushMirror) error {
-	_, err := db.GetEngine(ctx).ID(m.ID).Cols("public_html_url", "public_stars", "public_forks", "public_watchers",
+	_, err := db.GetEngine(ctx).ID(m.ID).Cols("public_stars", "public_forks", "public_watchers",
 		"public_synced_unix", "public_last_sync_unix", "public_last_error").Update(m)
 	return err
 }

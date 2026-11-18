@@ -49,8 +49,7 @@ func publicMirrorItem(ctx *context.Context, issue *issues_model.Issue) *repo_mod
 	if item == nil || item.Source != ctx.Repo.PublicUpstream.Source() {
 		return nil
 	}
-	if item.RemoteURL == "" {
-		item.RemoteURL = ctx.Repo.PublicUpstream.IssueURL(item.RemoteNumber, item.IsPull)
-	}
+	// never trust the stored URL, it comes from the upstream API and is rendered as a link
+	item.RemoteURL = ctx.Repo.PublicUpstream.ItemURL(item.RemoteURL, item.RemoteNumber, item.IsPull)
 	return item
 }

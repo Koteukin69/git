@@ -104,6 +104,15 @@ func newFakeUpstream(t *testing.T, flavor string) *fakeUpstream {
 				}
 			}
 			f.writePage(w, r, items)
+		case strings.HasPrefix(r.URL.Path, repoPrefix+"/issues/") && strings.HasSuffix(r.URL.Path, "/comments"):
+			n, _ := strconv.ParseInt(strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, repoPrefix+"/issues/"), "/comments"), 10, 64)
+			items := []any{}
+			for _, c := range f.comments {
+				if c.IssueNumber() == n {
+					items = append(items, c)
+				}
+			}
+			f.writePage(w, r, items)
 		case strings.HasPrefix(r.URL.Path, repoPrefix+"/pulls/"):
 			n, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, repoPrefix+"/pulls/"), 10, 64)
 			pr, ok := f.pulls[n]

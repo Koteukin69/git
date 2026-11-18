@@ -48,7 +48,6 @@ type PushMirror struct {
 	// repository, its stars/forks/issues/pull requests are synced back and starring, forking or opening issues and
 	// pull requests redirects there. Empty when disabled. See PublicMirrorProvider* for the allowed values.
 	PublicProvider     string             `xorm:"VARCHAR(20) NOT NULL DEFAULT ''"`
-	PublicHTMLURL      string             `xorm:"VARCHAR(2048)"`
 	PublicStars        int                `xorm:"NOT NULL DEFAULT 0"`
 	PublicForks        int                `xorm:"NOT NULL DEFAULT 0"`
 	PublicWatchers     int                `xorm:"NOT NULL DEFAULT 0"`

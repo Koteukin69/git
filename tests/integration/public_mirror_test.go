@@ -138,7 +138,16 @@ func TestPublicPushMirror(t *testing.T) {
 		defer tests.PrintCurrentTest(t)()
 		starsBefore := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: repo.ID}).NumStars
 
-		resp := session.MakeRequest(t, NewRequest(t, "POST", "/user2/repo1/action/star"), http.StatusSeeOther)
+		// a star given before the public mirror was enabled can still be removed
+		require.NoError(t, repo_model.StarRepo(db.DefaultContext, 2, repo.ID, true))
+		resp := session.MakeRequest(t, NewRequest(t, "GET", "/user2/repo1"), http.StatusOK)
+		NewHTMLParser(t, resp.Body).AssertElement(t, "#public-mirror-local-unstar", true)
+		session.MakeRequest(t, NewRequest(t, "POST", "/user2/repo1/action/unstar"), http.StatusOK)
+		assert.False(t, repo_model.IsStaring(db.DefaultContext, 2, repo.ID))
+		resp = session.MakeRequest(t, NewRequest(t, "GET", "/user2/repo1"), http.StatusOK)
+		NewHTMLParser(t, resp.Body).AssertElement(t, "#public-mirror-local-unstar", false)
+
+		resp = session.MakeRequest(t, NewRequest(t, "POST", "/user2/repo1/action/star"), http.StatusSeeOther)
 		assert.Equal(t, upstreamRepo, resp.Header().Get("Location"))
 		assert.Equal(t, starsBefore, unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: repo.ID}).NumStars)
 
@@ -183,7 +192,8 @@ func TestPublicPushMirror(t *testing.T) {
 		synced := unittest.AssertExistsAndLoadBean(t, &issues_model.Issue{RepoID: repo.ID, Index: 1})
 		require.NoError(t, repo_model.SavePublicMirrorIssue(db.DefaultContext, &repo_model.PublicMirrorIssue{
 			RepoID: repo.ID, Source: mirror.PublicUpstream().Source(), RemoteNumber: 77, IssueID: synced.ID,
-			RemoteURL: upstreamRepo + "/issues/77",
+			// a hostile value (e.g. stored by an older version): never rendered as is
+			RemoteURL: "javascript:alert(document.domain)",
 		}))
 
 		resp := session.MakeRequest(t, NewRequest(t, "GET", "/user2/repo1/issues/1"), http.StatusOK)
@@ -192,6 +202,8 @@ func TestPublicPushMirror(t *testing.T) {
 		assert.Equal(t, upstreamRepo+"/issues/77", doc.Find("#public-mirror-comment a.button").AttrOr("href", ""))
 		assert.Equal(t, upstreamRepo+"/issues/77", doc.Find("#public-mirror-label").AttrOr("href", ""))
 		assert.Contains(t, doc.Find("#public-mirror-label").Text(), "#77")
+		assert.Equal(t, upstreamRepo+"/issues/77", doc.Find("#public-mirror-comment span a").AttrOr("href", ""))
+		assert.NotContains(t, resp.Body.String(), "javascript:alert")
 
 		commentsBefore := unittest.GetCount(t, &issues_model.Comment{IssueID: synced.ID})
 		resp = session.MakeRequest(t, NewRequestWithValues(t, "POST", "/user2/repo1/issues/1/comments", map[string]string{

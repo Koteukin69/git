@@ -14,7 +14,6 @@ import (
 	"forgejo.org/models/db"
 	issues_model "forgejo.org/models/issues"
 	repo_model "forgejo.org/models/repo"
-	"forgejo.org/models/unit"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	giturl "forgejo.org/modules/git/url"
@@ -33,6 +32,9 @@ import (
 
 // syncOverlap is subtracted from the cursor to tolerate clock skew and items updated while a sync was running.
 const syncOverlap = 2 * time.Minute
+
+// maxSyncDuration bounds a sync started by the cron task; an interrupted sync resumes at the next run.
+const maxSyncDuration = 10 * time.Minute
 
 var (
 	repoLocks = sync.NewExclusivePool()
@@ -56,9 +58,12 @@ func SyncAll(ctx context.Context) error {
 			return ctx.Err()
 		default:
 		}
-		if err := Sync(ctx, m.ID); err != nil {
+		// one slow upstream must not hold back the others for the whole cron run
+		mirrorCtx, cancel := context.WithTimeout(ctx, maxSyncDuration)
+		if err := Sync(mirrorCtx, m.ID); err != nil {
 			log.Warn("public mirror sync of push mirror %d failed: %v", m.ID, err)
 		}
+		cancel()
 	}
 	return nil
 }
@@ -107,10 +112,10 @@ type syncer struct {
 	remoteURL      *giturl.GitURL
 	privateKeyPath string
 
-	syncIssues bool
-	syncPulls  bool
-	users      map[int64]int64
-	touched    map[int64]bool
+	// incremental is false for the first sync, which lists every comment anyway
+	incremental bool
+	users       map[int64]int64
+	touched     map[int64]bool
 }
 
 func runSync(ctx context.Context, m *repo_model.PushMirror) error {
@@ -137,16 +142,14 @@ func runSync(ctx context.Context, m *repo_model.PushMirror) error {
 	}
 
 	s := &syncer{
-		m:          m,
-		repo:       repo,
-		upstream:   upstream,
-		client:     NewClient(upstream, token),
-		source:     upstream.Source(),
-		remoteURL:  remoteURL,
-		syncIssues: repo.UnitEnabled(ctx, unit.TypeIssues),
-		syncPulls:  repo.UnitEnabled(ctx, unit.TypePullRequests),
-		users:      map[int64]int64{},
-		touched:    map[int64]bool{},
+		m:         m,
+		repo:      repo,
+		upstream:  upstream,
+		client:    NewClient(upstream, token),
+		source:    upstream.Source(),
+		remoteURL: remoteURL,
+		users:     map[int64]int64{},
+		touched:   map[int64]bool{},
 	}
 
 	info, err := s.client.GetRepo(ctx)
@@ -154,15 +157,13 @@ func runSync(ctx context.Context, m *repo_model.PushMirror) error {
 		return err
 	}
 	m.PublicStars, m.PublicForks, m.PublicWatchers = info.Stars, info.Forks, info.Watchers
-	m.PublicHTMLURL = info.HTMLURL
 	// save the counters now, they are useful even if the rest fails (e.g. rate limit)
 	if err := repo_model.UpdatePushMirrorPublicStatus(ctx, m); err != nil {
 		return err
 	}
 
-	if !s.syncIssues && !s.syncPulls {
-		return nil
-	}
+	// Issues and pull requests are synced even if their unit is disabled: they are hidden then, and visible as
+	// soon as the unit is enabled. Skipping them would lose them for good, the cursor moves on.
 
 	if len(m.PublicKey) != 0 {
 		cleanup, err := s.writePrivateKey()
@@ -176,6 +177,7 @@ func runSync(ctx context.Context, m *repo_model.PushMirror) error {
 	var since time.Time
 	if m.PublicSyncedUnix > 0 {
 		since = m.PublicSyncedUnix.AsTime().Add(-syncOverlap)
+		s.incremental = true
 	}
 
 	defer s.finish(ctx)
@@ -240,16 +242,20 @@ func (s *syncer) writePrivateKey() (func(), error) {
 	return cleanup, nil
 }
 
-// posterID returns the local user linked to the upstream account (through an external login source named after the
-// provider), or 0.
+// posterID returns the local user linked to the upstream account, or 0.
+//
+// Accounts are linked through an external login source named "github", which authenticates against github.com.
+// The IDs reported by any other upstream (GitHub Enterprise, Forgejo/Gitea, or a server pretending to be one) belong
+// to another user namespace, or could be chosen to impersonate a local user: they are never mapped, the upstream
+// name is shown instead.
 func (s *syncer) posterID(ctx context.Context, u *User) int64 {
-	if u == nil || u.ID == 0 {
+	if u == nil || u.ID == 0 || !s.upstream.IsGitHubDotCom() {
 		return 0
 	}
 	if id, ok := s.users[u.ID]; ok {
 		return id
 	}
-	id, err := user_model.GetUserIDByExternalUserID(ctx, s.upstream.Provider, fmt.Sprint(u.ID))
+	id, err := user_model.GetUserIDByExternalUserID(ctx, publicmirror.ProviderGitHub, fmt.Sprint(u.ID))
 	if err != nil {
 		log.Error("GetUserIDByExternalUserID: %v", err)
 		id = 0
@@ -275,7 +281,7 @@ func (s *syncer) setPoster(ctx context.Context, u *User, target remappable) erro
 func (s *syncer) syncIssuePage(ctx context.Context, items []*Issue) error {
 	var newHeads []*pullHead
 	for _, it := range items {
-		if it.Number <= 0 || (it.IsPull() && !s.syncPulls) || (!it.IsPull() && !s.syncIssues) {
+		if it.Number <= 0 {
 			continue
 		}
 		head, err := s.syncIssue(ctx, it)
@@ -329,10 +335,28 @@ func (s *syncer) syncIssue(ctx context.Context, it *Issue) (*pullHead, error) {
 		}
 	}
 
-	if mapping == nil {
-		return s.createIssue(ctx, it, remotePR)
+	if mapping != nil {
+		return s.updateIssue(ctx, it, remotePR, mapping, issue)
 	}
-	return s.updateIssue(ctx, it, remotePR, mapping, issue)
+	head, err := s.createIssue(ctx, it, remotePR)
+	if err != nil {
+		return nil, err
+	}
+	// The comment list of an incremental sync only has recent comments. An issue created now (synced again after it
+	// was deleted locally, or older than the cursor) needs all of its comments.
+	if s.incremental && it.Comments > 0 {
+		if err := s.client.ListIssueComments(ctx, it.Number, func(items []*Comment) error {
+			for _, c := range items {
+				if err := s.syncComment(ctx, c); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+	return head, nil
 }
 
 func titleOf(it *Issue, remotePR *PullRequest) string {
@@ -398,11 +422,8 @@ func (s *syncer) createIssue(ctx context.Context, it *Issue, remotePR *PullReque
 		Source:            s.source,
 		RemoteNumber:      it.Number,
 		IsPull:            it.IsPull(),
-		RemoteURL:         it.HTMLURL,
+		RemoteURL:         s.upstream.ItemURL(it.HTMLURL, it.Number, it.IsPull()),
 		RemoteUpdatedUnix: timeutil.TimeStamp(it.UpdatedAt.Unix()),
-	}
-	if mapping.RemoteURL == "" {
-		mapping.RemoteURL = s.upstream.IssueURL(it.Number, it.IsPull())
 	}
 
 	err := db.WithTx(ctx, func(ctx context.Context) error {
@@ -496,9 +517,7 @@ func (s *syncer) updateIssue(ctx context.Context, it *Issue, remotePR *PullReque
 	}
 
 	mapping.RemoteUpdatedUnix = timeutil.TimeStamp(it.UpdatedAt.Unix())
-	if it.HTMLURL != "" {
-		mapping.RemoteURL = it.HTMLURL
-	}
+	mapping.RemoteURL = s.upstream.ItemURL(it.HTMLURL, it.Number, it.IsPull())
 
 	err := db.WithTx(ctx, func(ctx context.Context) error {
 		if _, err := db.GetEngine(ctx).ID(issue.ID).NoAutoTime().
@@ -612,12 +631,19 @@ func (s *syncer) syncComment(ctx context.Context, c *Comment) error {
 	}
 	issueMapping, err := repo_model.GetPublicMirrorIssue(ctx, s.repo.ID, s.source, number)
 	if err != nil || issueMapping == nil {
-		return err // not synced (e.g. its unit is disabled)
+		return err // the issue is not synced
 	}
 
 	mapping, err := repo_model.GetPublicMirrorComment(ctx, s.repo.ID, s.source, c.ID)
 	if err != nil {
 		return err
+	}
+	if mapping != nil && mapping.IssueID != issueMapping.IssueID {
+		// the issue was deleted locally and synced again: its comments were deleted with it, sync them again too
+		if err := repo_model.DeletePublicMirrorCommentByID(ctx, mapping.ID); err != nil {
+			return err
+		}
+		mapping = nil
 	}
 	if mapping != nil {
 		if int64(mapping.RemoteUpdatedUnix) == c.UpdatedAt.Unix() {
@@ -662,6 +688,7 @@ func (s *syncer) syncComment(ctx context.Context, c *Comment) error {
 			RepoID:            s.repo.ID,
 			Source:            s.source,
 			RemoteID:          c.ID,
+			IssueID:           comment.IssueID,
 			CommentID:         comment.ID,
 			RemoteUpdatedUnix: comment.UpdatedUnix,
 		})

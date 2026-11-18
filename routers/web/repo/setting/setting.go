@@ -616,6 +616,9 @@ func SettingsPost(ctx *context.Context) {
 				ctx.ServerError("SetPushMirrorPublicProvider", err)
 				return
 			}
+			if m.IsPublic() {
+				mirror_service.AddPublicMirrorToQueue(m.ID)
+			}
 		}
 
 		if m.BranchFilter != form.PushMirrorBranchFilter {

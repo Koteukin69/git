@@ -63,6 +63,7 @@ type Issue struct {
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 	ClosedAt    *time.Time      `json:"closed_at"`
+	Comments    int             `json:"comments"`
 	PullRequest *PullRequestRef `json:"pull_request"`
 }
 
@@ -279,6 +280,32 @@ func (c *Client) ListComments(ctx context.Context, since time.Time, fn func([]*C
 		header, err := c.get(ctx, c.listURL("/issues/comments", since, page), &items)
 		if err != nil {
 			return err
+		}
+		if len(items) > 0 {
+			if err := fn(items); err != nil {
+				return err
+			}
+		}
+		if !hasNextPage(header, len(items)) {
+			return nil
+		}
+	}
+	return nil
+}
+
+// ListIssueComments calls fn with every page of comments of an issue or pull request.
+func (c *Client) ListIssueComments(ctx context.Context, number int64, fn func([]*Comment) error) error {
+	for page := 1; page <= maxPages; page++ {
+		var items []*Comment
+		header, err := c.get(ctx, c.listURL(fmt.Sprintf("/issues/%d/comments", number), time.Time{}, page), &items)
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			if item.IssueNumber() == 0 {
+				// Forgejo/Gitea do not always fill issue_url for comments of pull requests
+				item.IssueURL = fmt.Sprintf("%s/issues/%d", c.upstream.APIRepoURL(), number)
+			}
 		}
 		if len(items) > 0 {
 			if err := fn(items); err != nil {

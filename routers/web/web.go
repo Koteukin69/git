@@ -1206,7 +1206,8 @@ func registerRoutes(m *web.Route) {
 		m.Post("/reject_transfer", repo.ActionTransfer(false))
 		if !setting.Repository.DisableStars {
 			m.Post("/star", repo.RedirectToPublicMirror((*publicmirror.Upstream).StarURL), repo.ActionStar(true))
-			m.Post("/unstar", repo.RedirectToPublicMirror((*publicmirror.Upstream).StarURL), repo.ActionStar(false))
+			// unstarring stays local: users who starred before the public mirror was enabled can still undo it
+			m.Post("/unstar", repo.ActionStar(false))
 		}
 	}, reqSignIn, context.RepoAssignment, context.UnitTypes())
 

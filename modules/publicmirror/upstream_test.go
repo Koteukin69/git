@@ -89,3 +89,28 @@ func TestParse(t *testing.T) {
 		assert.Error(t, err, bad.remote)
 	}
 }
+
+func TestItemURL(t *testing.T) {
+	gh, err := Parse(ProviderGitHub, "https://github.com/o/r")
+	require.NoError(t, err)
+	fallback := "https://github.com/o/r/issues/5"
+	for raw, expected := range map[string]string{
+		"https://github.com/o/r/issues/5":     "https://github.com/o/r/issues/5",
+		"https://GitHub.com/o/r/issues/5#x":   "https://GitHub.com/o/r/issues/5#x",
+		"javascript:alert(document.domain)":   fallback,
+		"JavaScript://github.com/%0aalert(1)": fallback,
+		"data:text/html,<script>":             fallback,
+		"https://evil.example.com/o/r":        fallback,
+		"https://user:pw@github.com/o/r":      fallback,
+		"//github.com/o/r/issues/5":           fallback,
+		"":                                    fallback,
+	} {
+		assert.Equal(t, expected, gh.ItemURL(raw, 5, false), raw)
+	}
+	assert.Equal(t, "https://github.com/o/r/pull/5", gh.ItemURL("javascript:x", 5, true))
+
+	fj, err := Parse(ProviderForgejo, "http://localhost:3000/sub/o/r")
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:3000/sub/o/r/pulls/2", fj.ItemURL("http://localhost:3000/sub/o/r/pulls/2", 2, true))
+	assert.Equal(t, "http://localhost:3000/sub/o/r/pulls/2", fj.ItemURL("http://localhost:4000/o/r/pulls/2", 2, true))
+}

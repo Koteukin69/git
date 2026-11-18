@@ -108,11 +108,7 @@ func (u *Upstream) FullName() string {
 }
 
 func (u *Upstream) instanceURL() string {
-	host := u.Host
-	if u.IsGitHubDotCom() {
-		host = "github.com"
-	}
-	return u.Scheme + "://" + host + u.BasePath
+	return u.Scheme + "://" + u.webHost() + u.BasePath
 }
 
 // WebURL is the URL of the repository page on the upstream.
@@ -177,4 +173,23 @@ func (u *Upstream) IssueURL(number int64, isPull bool) string {
 		return fmt.Sprintf("%s/pulls/%d", u.WebURL(), number)
 	}
 	return fmt.Sprintf("%s/issues/%d", u.WebURL(), number)
+}
+
+// ItemURL returns rawURL (the html_url reported by the upstream API for an issue or pull request) if it is a http(s)
+// URL on the upstream host, and the URL built from the number otherwise. The API response is not trusted: it is
+// rendered as a link, so it must never be e.g. a javascript: URL or point to another host.
+func (u *Upstream) ItemURL(rawURL string, number int64, isPull bool) string {
+	if parsed, err := url.Parse(rawURL); err == nil &&
+		(parsed.Scheme == "https" || parsed.Scheme == "http") && parsed.User == nil &&
+		strings.EqualFold(parsed.Host, u.webHost()) {
+		return parsed.String()
+	}
+	return u.IssueURL(number, isPull)
+}
+
+func (u *Upstream) webHost() string {
+	if u.IsGitHubDotCom() {
+		return "github.com"
+	}
+	return u.Host
 }

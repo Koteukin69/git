@@ -600,6 +600,7 @@
 	"repo.public_mirror.public_at": "Public mirror",
 	"repo.public_mirror.star": "Star on %s",
 	"repo.public_mirror.fork": "Fork on %s",
+	"repo.public_mirror.unstar_local": "Remove the star you gave here before the repository moved to its public mirror",
 	"repo.public_mirror.synced_issue": "This issue is synced from <a href=\"%[1]s\" target=\"_blank\" rel=\"noopener noreferrer\">%[2]s</a>, the discussion happens there.",
 	"repo.public_mirror.synced_pull": "This pull request is synced from <a href=\"%[1]s\" target=\"_blank\" rel=\"noopener noreferrer\">%[2]s</a>, the discussion happens there.",
 	"repo.public_mirror.comment_on": "Comment on %s",
