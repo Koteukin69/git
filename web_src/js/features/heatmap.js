@@ -8,9 +8,16 @@ export async function initHeatmap() {
   const {default: ActivityHeatmap} = await import(/* webpackChunkName: "activity-heatmap" */'../components/ActivityHeatmap.vue');
   try {
     const heatmap = {};
-    for (const {contributions, timestamp} of JSON.parse(el.getAttribute('data-heatmap-data'))) {
-      // Convert to user timezone and sum contributions by date
-      const dateStr = new Date(timestamp * 1000).toDateString();
+    for (const {contributions, timestamp, date} of JSON.parse(el.getAttribute('data-heatmap-data'))) {
+      let dateStr;
+      if (date) {
+        // The server already assigned the contributions to a calendar day (commits in their own time zone)
+        const [year, month, day] = date.split('-').map(Number);
+        dateStr = new Date(year, month - 1, day).toDateString();
+      } else {
+        // Convert to user timezone and sum contributions by date
+        dateStr = new Date(timestamp * 1000).toDateString();
+      }
       heatmap[dateStr] = (heatmap[dateStr] || 0) + contributions;
     }
 

@@ -15,6 +15,7 @@ import (
 	issue_indexer "forgejo.org/modules/indexer/issues"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/updatechecker"
+	contribution_service "forgejo.org/services/contribution"
 	moderation_service "forgejo.org/services/moderation"
 	repo_service "forgejo.org/services/repository"
 	archiver_service "forgejo.org/services/repository/archiver"
@@ -227,6 +228,16 @@ func registerRebuildIssueIndexer() {
 	})
 }
 
+func registerRebuildCommitContributions() {
+	RegisterTaskFatal("rebuild_commit_contributions", &BaseConfig{
+		Enabled:    true,
+		RunAtStart: true,
+		Schedule:   "@every 168h",
+	}, func(ctx context.Context, _ *user_model.User, config Config) error {
+		return contribution_service.SyncAllRepositories(ctx)
+	})
+}
+
 func registerRemoveResolvedReports() {
 	type ReportConfig struct {
 		BaseConfig
@@ -260,6 +271,7 @@ func initExtendedTasks() {
 	registerDeleteOldSystemNotices()
 	registerGCLFS()
 	registerRebuildIssueIndexer()
+	registerRebuildCommitContributions()
 	if setting.Moderation.Enabled {
 		registerRemoveResolvedReports()
 	}

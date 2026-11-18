@@ -30022,13 +30022,19 @@
       "x-go-package": "forgejo.org/modules/structs"
     },
     "UserHeatmapData": {
-      "description": "UserHeatmapData represents the data needed to create a heatmap",
+      "description": "Every entry is one calendar day. Like on GitHub, commits are counted on the day of their author date in the time\nzone recorded in the commit, other contributions on their day in the server's UI time zone.",
       "type": "object",
+      "title": "UserHeatmapData represents the data needed to create a heatmap.",
       "properties": {
         "contributions": {
           "type": "integer",
           "format": "int64",
           "x-go-name": "Contributions"
+        },
+        "date": {
+          "description": "Date is the calendar day of the contributions, formatted as YYYY-MM-DD",
+          "type": "string",
+          "x-go-name": "Date"
         },
         "timestamp": {
           "$ref": "#/definitions/TimeStamp"

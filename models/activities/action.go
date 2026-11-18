@@ -518,6 +518,15 @@ func ActivityReadable(user, doer *user_model.User) bool {
 		doer != nil && (doer.IsAdmin || user.ID == doer.ID)
 }
 
+func accessibleTeamRepoIDs(ctx context.Context, org *user_model.User, team *organization.Team) ([]int64, error) {
+	env := organization.OrgFromUser(org).AccessibleTeamReposEnv(ctx, team)
+	teamRepoIDs, err := env.RepoIDs(1, org.NumRepos)
+	if err != nil {
+		return nil, fmt.Errorf("GetTeamRepositories: %w", err)
+	}
+	return teamRepoIDs, nil
+}
+
 func activityQueryCondition(ctx context.Context, opts GetFeedsOptions) (builder.Cond, error) {
 	cond := builder.NewCond()
 
@@ -574,10 +583,9 @@ func activityQueryCondition(ctx context.Context, opts GetFeedsOptions) (builder.
 	}
 
 	if opts.RequestedTeam != nil {
-		env := organization.OrgFromUser(opts.RequestedUser).AccessibleTeamReposEnv(ctx, opts.RequestedTeam)
-		teamRepoIDs, err := env.RepoIDs(1, opts.RequestedUser.NumRepos)
+		teamRepoIDs, err := accessibleTeamRepoIDs(ctx, opts.RequestedUser, opts.RequestedTeam)
 		if err != nil {
-			return nil, fmt.Errorf("GetTeamRepositories: %w", err)
+			return nil, err
 		}
 		cond = cond.And(builder.In("repo_id", teamRepoIDs))
 	}

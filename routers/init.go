@@ -36,6 +36,7 @@ import (
 	auth_method "forgejo.org/services/auth/method"
 	"forgejo.org/services/auth/source/oauth2"
 	"forgejo.org/services/automerge"
+	contribution_service "forgejo.org/services/contribution"
 	"forgejo.org/services/cron"
 	federation_service "forgejo.org/services/federation"
 	feed_service "forgejo.org/services/feed"
@@ -148,6 +149,7 @@ func InitWebInstalled(ctx context.Context) {
 
 	// Booting long running goroutines.
 	mustInit(indexer_service.Init)
+	mustInit(contribution_service.Init)
 
 	mirror_service.InitSyncMirrors()
 	mustInit(webhook.Init)
