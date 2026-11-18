@@ -79,7 +79,12 @@
 				{{template "repo/issue/view_content/pull".}}
 			{{end}}
 
-			{{if .Repository.IsArchived}}
+			{{if .PublicMirrorItem}}
+				<div class="ui info message tw-flex tw-items-center tw-justify-between tw-gap-2" id="public-mirror-comment">
+					<span>{{if .Issue.IsPull}}{{ctx.Locale.Tr "repo.public_mirror.synced_pull" .PublicMirrorItem.RemoteURL $.PublicUpstream.DisplayName}}{{else}}{{ctx.Locale.Tr "repo.public_mirror.synced_issue" .PublicMirrorItem.RemoteURL $.PublicUpstream.DisplayName}}{{end}}</span>
+					<a class="ui primary small button" href="{{.PublicMirrorItem.RemoteURL}}" target="_blank" rel="noopener noreferrer">{{svg "octicon-link-external"}} {{ctx.Locale.Tr "repo.public_mirror.comment_on" $.PublicUpstream.DisplayName}}</a>
+				</div>
+			{{else if .Repository.IsArchived}}
 				<div class="ui warning message tw-text-center">
 					{{ctx.Locale.Tr "repo.archive.nocomment"}}
 				</div>

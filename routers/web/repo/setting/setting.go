@@ -28,6 +28,7 @@ import (
 	"forgejo.org/modules/indexer/stats"
 	"forgejo.org/modules/lfs"
 	"forgejo.org/modules/log"
+	"forgejo.org/modules/publicmirror"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/structs"
 	"forgejo.org/modules/util"
@@ -599,10 +600,25 @@ func SettingsPost(ctx *context.Context) {
 			return
 		}
 
+		if !validPublicMirror(form.PushMirrorPublic, m.RemoteAddress) {
+			ctx.RenderWithErr(ctx.Tr("repo.settings.push_mirror.public.invalid"), tplSettingsOptions, &forms.RepoSettingForm{})
+			return
+		}
+
 		m.Interval = interval
 		if err := repo_model.UpdatePushMirrorInterval(ctx, m); err != nil {
 			ctx.ServerError("UpdatePushMirrorInterval", err)
 			return
+		}
+
+		if m.PublicProvider != form.PushMirrorPublic {
+			if err := repo_model.SetPushMirrorPublicProvider(ctx, m, form.PushMirrorPublic); err != nil {
+				ctx.ServerError("SetPushMirrorPublicProvider", err)
+				return
+			}
+			if m.IsPublic() {
+				mirror_service.AddPublicMirrorToQueue(m.ID)
+			}
 		}
 
 		if m.BranchFilter != form.PushMirrorBranchFilter {
@@ -705,6 +721,12 @@ func SettingsPost(ctx *context.Context) {
 			return
 		}
 
+		if !validPublicMirror(form.PushMirrorPublic, remoteAddress) {
+			ctx.Data["Err_PushMirrorPublic"] = true
+			ctx.RenderWithErr(ctx.Tr("repo.settings.push_mirror.public.invalid"), tplSettingsOptions, &form)
+			return
+		}
+
 		m := &repo_model.PushMirror{
 			RepoID:        repo.ID,
 			Repo:          repo,
@@ -744,6 +766,14 @@ func SettingsPost(ctx *context.Context) {
 			}
 			ctx.ServerError("AddPushMirrorRemote", err)
 			return
+		}
+
+		if form.PushMirrorPublic != repo_model.PublicMirrorProviderNone {
+			if err := repo_model.SetPushMirrorPublicProvider(ctx, m, form.PushMirrorPublic); err != nil {
+				ctx.ServerError("SetPushMirrorPublicProvider", err)
+				return
+			}
+			mirror_service.AddPublicMirrorToQueue(m.ID)
 		}
 
 		ctx.Flash.Success(ctx.Tr("repo.settings.update_settings_success"))
@@ -1124,6 +1154,18 @@ func handleSettingRemoteAddrError(ctx *context.Context, err error, form *forms.R
 		return
 	}
 	ctx.RenderWithErr(ctx.Tr("repo.mirror_address_url_invalid"), tplSettingsOptions, form)
+}
+
+// validPublicMirror checks that the public mirror provider is known and can be used with the remote address.
+func validPublicMirror(provider, remoteAddress string) bool {
+	if !repo_model.IsValidPublicMirrorProvider(provider) {
+		return false
+	}
+	if provider == repo_model.PublicMirrorProviderNone {
+		return true
+	}
+	_, err := publicmirror.Parse(provider, remoteAddress)
+	return err == nil
 }
 
 func selectPushMirrorByForm(ctx *context.Context, form *forms.RepoSettingForm, repo *repo_model.Repository) (*repo_model.PushMirror, error) {

@@ -231,6 +231,7 @@
 								<th>{{ctx.Locale.Tr "repo.settings.mirror_settings.direction"}}</th>
 								<th>{{ctx.Locale.Tr "repo.settings.mirror_settings.last_update"}}</th>
 								<th>{{ctx.Locale.Tr "repo.mirror_public_key"}}</th>
+								<th>{{ctx.Locale.Tr "repo.settings.push_mirror.public.column"}}</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -241,6 +242,18 @@
 								<td>{{ctx.Locale.Tr "repo.settings.mirror_settings.direction.push"}}</td>
 								<td>{{if .LastUpdateUnix}}{{DateUtils.FullTime .LastUpdateUnix}}{{else}}{{ctx.Locale.Tr "never"}}{{end}} {{if .LastError}}<div class="ui red label" data-tooltip-content="{{.LastError}}">{{ctx.Locale.Tr "error"}}</div>{{end}}</td>
 								<td>{{if not (eq (len .GetPublicKey) 0)}}<a data-clipboard-text="{{.GetPublicKey}}">{{ctx.Locale.Tr "repo.settings.mirror_settings.push_mirror.copy_public_key"}}</a>{{else}}{{ctx.Locale.Tr "repo.settings.mirror_settings.push_mirror.none_ssh"}}{{end}}</td>
+								<td class="push-mirror-public">
+									{{if .IsPublic}}
+										{{$upstream := .PublicUpstream}}
+										{{if $upstream}}<a href="{{$upstream.WebURL}}" target="_blank" rel="noopener noreferrer">{{$upstream.DisplayName}}</a>{{else}}{{.PublicProvider}}{{end}}
+										<div class="text small grey">
+											{{if .PublicLastSyncUnix}}{{DateUtils.TimeSince .PublicLastSyncUnix}}{{else}}{{ctx.Locale.Tr "repo.settings.push_mirror.public.never_synced"}}{{end}}
+										</div>
+										{{if .PublicLastError}}<div class="ui red label" data-tooltip-content="{{.PublicLastError}}">{{ctx.Locale.Tr "error"}}</div>{{end}}
+									{{else}}
+										{{ctx.Locale.Tr "repo.settings.mirror_settings.push_mirror.none_ssh"}}
+									{{end}}
+								</td>
 								<td class="right aligned">
 									<button
 										class="ui tiny button show-modal"
@@ -250,6 +263,7 @@
 										data-modal-push-mirror-edit-interval="{{.Interval}}"
 										data-modal-push-mirror-edit-address="{{.RemoteAddress}}"
 										data-modal-push-mirror-edit-branch-filter="{{.BranchFilter}}"
+										data-modal-push-mirror-edit-public.value="{{.PublicProvider}}"
 									>
 										{{svg "octicon-pencil" 14}}
 									</button>
@@ -272,7 +286,7 @@
 							{{end}}
 							{{if (not .DisableNewPushMirrors)}}
 								<tr>
-									<td colspan="5">
+									<td colspan="6">
 										<form class="ui form" method="post">
 											{{template "base/disable_form_autofill"}}
 											<input type="hidden" name="action" value="push-mirror-add">
@@ -315,6 +329,11 @@
 													<input id="push_mirror_sync_on_commit" name="push_mirror_sync_on_commit" type="checkbox" {{if .push_mirror_sync_on_commit}}checked{{end}}>
 													<label for="push_mirror_sync_on_commit">{{ctx.Locale.Tr "repo.mirror_sync_on_commit"}}</label>
 												</div>
+											</div>
+											<div class="field {{if .Err_PushMirrorPublic}}error{{end}}">
+												<label for="push_mirror_public">{{ctx.Locale.Tr "repo.settings.push_mirror.public.label"}}</label>
+												{{template "repo/settings/push_mirror_public_select" dict "ID" "push_mirror_public" "Value" .push_mirror_public}}
+												<p class="help">{{ctx.Locale.Tr "repo.settings.push_mirror.public.description"}}</p>
 											</div>
 											<div class="inline field {{if .Err_PushMirrorInterval}}error{{end}}">
 												<label for="push_mirror_interval">{{ctx.Locale.Tr "repo.mirror_interval" .MinimumMirrorInterval}}</label>

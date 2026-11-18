@@ -1452,6 +1452,10 @@ func ViewIssue(ctx *context.Context) {
 		return
 	}
 
+	if item := publicMirrorItem(ctx, issue); item != nil {
+		ctx.Data["PublicMirrorItem"] = item
+	}
+
 	if issue.IsPull {
 		MustAllowPulls(ctx)
 		if ctx.Written() {
@@ -3110,6 +3114,12 @@ func NewComment(ctx *context.Context) {
 		}
 
 		ctx.Error(http.StatusForbidden)
+		return
+	}
+
+	if item := publicMirrorItem(ctx, issue); item != nil {
+		// the conversation of synced issues and pull requests happens on the public mirror
+		ctx.JSONRedirect(item.RemoteURL)
 		return
 	}
 

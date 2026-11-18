@@ -20,12 +20,14 @@ const (
 	PullMirrorType SyncType = iota
 	// PushMirrorType for push mirrors
 	PushMirrorType
+	// PublicMirrorType syncs the stars, forks, issues and pull requests of a push mirror used as public mirror
+	PublicMirrorType
 )
 
 // SyncRequest for the mirror queue
 type SyncRequest struct {
 	Type        SyncType
-	ReferenceID int64 // RepoID for pull mirror, MirrorID for push mirror
+	ReferenceID int64 // RepoID for pull mirror, MirrorID for push and public mirror
 }
 
 // StartSyncMirrors starts a go routine to sync the mirrors
@@ -48,6 +50,11 @@ func AddPullMirrorToQueue(repoID int64) {
 // AddPushMirrorToQueue adds the push mirror to the queue
 func AddPushMirrorToQueue(mirrorID int64) {
 	addMirrorToQueue(PushMirrorType, mirrorID)
+}
+
+// AddPublicMirrorToQueue queues the sync of the stars, forks, issues and pull requests of a public mirror
+func AddPublicMirrorToQueue(mirrorID int64) {
+	addMirrorToQueue(PublicMirrorType, mirrorID)
 }
 
 func addMirrorToQueue(syncType SyncType, referenceID int64) {

@@ -146,6 +146,7 @@ type RepoSettingForm struct {
 	PushMirrorInterval     string
 	PushMirrorUseSSH       bool
 	PushMirrorBranchFilter string `binding:"MaxSize(2048)" preprocess:"TrimSpace"`
+	PushMirrorPublic       string `binding:"MaxSize(20)"`
 	Private                bool
 	Template               bool
 	EnablePrune            bool

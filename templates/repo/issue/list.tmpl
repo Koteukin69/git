@@ -18,7 +18,13 @@
 			{{template "repo/issue/navbar" .}}
 			{{template "repo/issue/search" .}}
 			{{if not .Repository.IsArchived}}
-				{{if .PageIsIssueList}}
+				{{if .PublicUpstream}}
+					{{if .PageIsIssueList}}
+						<a class="primary button issue-list-new" href="{{.PublicUpstream.NewIssueURL}}" target="_blank" rel="noopener noreferrer">{{svg "octicon-link-external"}} {{ctx.Locale.Tr "repo.public_mirror.new_issue" .PublicUpstream.DisplayName}}</a>
+					{{else}}
+						<a class="primary button new-pr-button issue-list-new" href="{{.PublicUpstream.NewPullURL}}" target="_blank" rel="noopener noreferrer">{{svg "octicon-link-external"}} {{ctx.Locale.Tr "repo.public_mirror.new_pull" .PublicUpstream.DisplayName}}</a>
+					{{end}}
+				{{else if .PageIsIssueList}}
 					<a class="primary button issue-list-new" href="{{.RepoLink}}/issues/new{{if .NewIssueChooseTemplate}}/choose{{end}}">{{ctx.Locale.Tr "repo.issues.new"}}</a>
 				{{else}}
 					<a class="primary button new-pr-button issue-list-new{{if not .PullRequestCtx.Allowed}} disabled{{end}}" href="{{if .PullRequestCtx.Allowed}}{{.Repository.Link}}/compare/{{.Repository.DefaultBranch | PathEscapeSegments}}...{{if ne .Repository.Owner.Name .PullRequestCtx.BaseRepo.Owner.Name}}{{PathEscape .Repository.Owner.Name}}:{{end}}{{.Repository.DefaultBranch | PathEscapeSegments}}{{end}}">{{ctx.Locale.Tr "repo.pulls.new"}}</a>

@@ -1,0 +1,5 @@
+<select id="{{.ID}}" name="push_mirror_public" class="ui selection">
+	<option value=""{{if not .Value}} selected{{end}}>{{ctx.Locale.Tr "repo.settings.push_mirror.public.none"}}</option>
+	<option value="github"{{if eq .Value "github"}} selected{{end}}>{{ctx.Locale.Tr "repo.settings.push_mirror.public.github"}}</option>
+	<option value="forgejo"{{if eq .Value "forgejo"}} selected{{end}}>{{ctx.Locale.Tr "repo.settings.push_mirror.public.forgejo"}}</option>
+</select>
