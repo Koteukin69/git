@@ -1,3 +1,15 @@
+{{if $.PublicUpstream}}
+<div class="ui labeled button" id="public-mirror-fork">
+	<a class="ui compact small basic button" href="{{$.PublicUpstream.ForkURL}}" target="_blank" rel="noopener noreferrer" data-tooltip-content="{{ctx.Locale.Tr "repo.public_mirror.fork" $.PublicUpstream.DisplayName}}">
+		{{svg "octicon-repo-forked"}}<span class="text not-mobile">{{ctx.Locale.Tr "repo.fork"}}</span>
+	</a>
+	<a class="ui basic label" href="{{$.PublicUpstream.ForksURL}}" target="_blank" rel="noopener noreferrer"
+		aria-label="{{ctx.Locale.TrPluralString $.PublicMirror.PublicForks "fork.n_forks" (printf "%d" $.PublicMirror.PublicForks)}}"
+		>
+		{{CountFmt $.PublicMirror.PublicForks}}
+	</a>
+</div>
+{{else}}
 {{with .Repository}}
 {{if and (not .IsEmpty) ($.Permission.CanRead $.UnitTypeCode)}}
 	<div class="ui labeled button
@@ -50,5 +62,6 @@
 			{{CountFmt .NumForks}}
 		</a>
 	</div>
+{{end}}
 {{end}}
 {{end}}

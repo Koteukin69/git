@@ -25,6 +25,11 @@
 				</div>
 				<p class="help">{{ctx.Locale.Tr "repo.settings.push_mirror.branch_filter.description" "https://forgejo.org/docs/latest/user/repo-mirror/#branch-filter" "Forgejo"}}</p>
 			</div>
+			<div class="field">
+				<label for="push-mirror-edit-public">{{ctx.Locale.Tr "repo.settings.push_mirror.public.label"}}</label>
+				{{template "repo/settings/push_mirror_public_select" dict "ID" "push-mirror-edit-public" "Value" ""}}
+				<p class="help">{{ctx.Locale.Tr "repo.settings.push_mirror.public.description"}}</p>
+			</div>
 			<div class="actions">
 				<button class="ui small basic cancel button">
 					{{svg "octicon-x"}}

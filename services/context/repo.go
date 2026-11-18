@@ -32,6 +32,7 @@ import (
 	code_indexer "forgejo.org/modules/indexer/code"
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/optional"
+	"forgejo.org/modules/publicmirror"
 	repo_module "forgejo.org/modules/repository"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/singleowner"
@@ -72,6 +73,11 @@ type Repository struct {
 	CommitsCount int64
 
 	PullRequest *PullRequest
+
+	// PublicMirror is the push mirror used as public face of the repository (nil when there is none): starring,
+	// forking and opening issues or pull requests redirect to PublicUpstream.
+	PublicMirror   *repo_model.PushMirror
+	PublicUpstream *publicmirror.Upstream
 }
 
 // CanWriteToBranch checks if the branch is writable by the user
@@ -424,6 +430,23 @@ func repoAssignment(ctx *Context, repo *repo_model.Repository) {
 		} else if err != repo_model.ErrMirrorNotExist {
 			ctx.ServerError("GetMirrorByRepoID", err)
 			return
+		}
+	}
+
+	if setting.Mirror.Enabled {
+		// a push mirror may be the public face of the repository, see models/repo/public_mirror.go
+		publicMirror, err := repo_model.GetPublicPushMirror(ctx, repo.ID)
+		if err != nil {
+			ctx.ServerError("GetPublicPushMirror", err)
+			return
+		}
+		if publicMirror != nil {
+			if upstream := publicMirror.PublicUpstream(); upstream != nil {
+				ctx.Repo.PublicMirror = publicMirror
+				ctx.Repo.PublicUpstream = upstream
+				ctx.Data["PublicMirror"] = publicMirror
+				ctx.Data["PublicUpstream"] = upstream
+			}
 		}
 	}
 

@@ -1,3 +1,15 @@
+{{if $.PublicUpstream}}
+<div class="ui labeled button" id="public-mirror-star">
+	<a class="ui compact small basic button" href="{{$.PublicUpstream.StarURL}}" target="_blank" rel="noopener noreferrer" data-tooltip-content="{{ctx.Locale.Tr "repo.public_mirror.star" $.PublicUpstream.DisplayName}}">
+		{{svg "octicon-star"}}<span class="text not-mobile">{{ctx.Locale.Tr "repo.star"}}</span>
+	</a>
+	<a class="ui basic label" href="{{$.PublicUpstream.StargazersURL}}" target="_blank" rel="noopener noreferrer"
+		aria-label="{{ctx.Locale.TrPluralString $.PublicMirror.PublicStars "stars.n_stars" (printf "%d" $.PublicMirror.PublicStars)}}"
+		>
+		{{CountFmt $.PublicMirror.PublicStars}}
+	</a>
+</div>
+{{else}}
 <form hx-boost="true" hx-target="this" method="post" action="{{$.RepoLink}}/action/{{if $.IsStaringRepo}}un{{end}}star" hx-on::after-settle="this.querySelector('button').focus()">
 	<div class="ui labeled button" {{if not $.IsSigned}}data-tooltip-content="{{ctx.Locale.Tr "repo.star_guest_user"}}"{{end}}>
 		<button type="submit" class="ui compact small basic button"{{if not $.IsSigned}} disabled{{end}} aria-label="{{if $.IsStaringRepo}}{{ctx.Locale.Tr "repo.unstar"}}{{else}}{{ctx.Locale.Tr "repo.star"}}{{end}}">
@@ -14,3 +26,4 @@
 		</a>
 	</div>
 </form>
+{{end}}

@@ -8,13 +8,16 @@
 	<div class="issue-title" id="issue-title-display">
 		<h1 class="tw-break-anywhere">
 			{{RenderIssueTitle $.Context .Issue.Title ($.Repository.ComposeMetas ctx)}}				<span class="index">#{{.Issue.Index}}</span>
+			{{if .PublicMirrorItem}}
+				<a id="public-mirror-label" class="ui label tw-align-middle" href="{{.PublicMirrorItem.RemoteURL}}" target="_blank" rel="noopener noreferrer">{{svg (MigrationIcon .PublicUpstream.Host) 14}} {{.PublicUpstream.DisplayName}} #{{.PublicMirrorItem.RemoteNumber}}</a>
+			{{end}}
 		</h1>
 		<div class="button-row">
 			{{if $canEditIssueTitle}}
 			<button id="issue-title-edit-show" class="ui small basic button">{{ctx.Locale.Tr "repo.issues.edit"}}</button>
 			{{end}}
 			{{if and (not .Issue.IsPull) (not .Repository.IsArchived)}}
-			<a role="button" class="ui small primary button" href="{{.RepoLink}}/issues/new{{if .NewIssueChooseTemplate}}/choose{{end}}">{{ctx.Locale.Tr "repo.issues.new"}}</a>
+			<a role="button" class="ui small primary button" href="{{if .PublicUpstream}}{{.PublicUpstream.NewIssueURL}}{{else}}{{.RepoLink}}/issues/new{{if .NewIssueChooseTemplate}}/choose{{end}}{{end}}">{{ctx.Locale.Tr "repo.issues.new"}}</a>
 			{{end}}
 		</div>
 	</div>
@@ -68,7 +71,7 @@
 						<a {{if gt .Issue.PullRequest.Merger.ID 0}}href="{{.Issue.PullRequest.Merger.HomeLink}}"{{end}}>{{.Issue.PullRequest.Merger.GetDisplayName}}</a>
 						<span class="pull-desc">{{ctx.Locale.TrPluralString .NumCommits "repo.pulls.merged_title_desc" .NumCommits $headHref $baseHref $mergedStr}}</span>
 					{{end}}
-					{{if .MadeUsingAGit}}
+					{{if and .MadeUsingAGit (not .PublicMirrorItem)}}
 						{{/* TODO: Move documentation link to the instructions at the bottom of the PR, show instructions when clicking label */}}
 						{{/* Note: #agit-label is necessary for testing whether the label appears when it should in tests/integration/git_test.go */}}
 						<a target="_blank" rel="noopener" href="https://forgejo.org/docs/latest/user/agit-support/">
@@ -86,7 +89,7 @@
 							{{ctx.Locale.TrPluralString .NumCommits "repo.pulls.title_desc" .NumCommits $headHref $baseHref "branch_target"}}
 						</span>
 					{{end}}
-					{{if .MadeUsingAGit}}
+					{{if and .MadeUsingAGit (not .PublicMirrorItem)}}
 						{{/* TODO: Move documentation link to the instructions at the bottom of the PR, show instructions when clicking label */}}
 						{{/* Note: #agit-label is necessary for testing whether the label appears when it should in tests/integration/git_test.go */}}
 						<a target="_blank" rel="noopener" href="https://forgejo.org/docs/latest/user/agit-support/">

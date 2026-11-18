@@ -15,6 +15,10 @@ import (
 	"forgejo.org/modules/setting"
 )
 
+// PublicMirrorSyncer syncs a public mirror back into its repository. It is set by services/publicmirror, which
+// cannot be imported from here without an import cycle.
+var PublicMirrorSyncer func(ctx context.Context, pushMirrorID int64) error
+
 // doMirrorSync causes this request to mirror itself
 func doMirrorSync(ctx context.Context, req *SyncRequest) {
 	if req.ReferenceID == 0 {
@@ -26,6 +30,14 @@ func doMirrorSync(ctx context.Context, req *SyncRequest) {
 		_ = SyncPushMirror(ctx, req.ReferenceID)
 	case PullMirrorType:
 		_ = SyncPullMirror(ctx, req.ReferenceID)
+	case PublicMirrorType:
+		if PublicMirrorSyncer == nil {
+			log.Error("No public mirror syncer registered, skipping push mirror %d", req.ReferenceID)
+			return
+		}
+		if err := PublicMirrorSyncer(ctx, req.ReferenceID); err != nil {
+			log.Warn("Public mirror sync of push mirror %d failed: %v", req.ReferenceID, err)
+		}
 	default:
 		log.Error("Unknown Request type in queue: %v for MirrorID[%d]", req.Type, req.ReferenceID)
 	}

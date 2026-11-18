@@ -43,6 +43,18 @@ type PushMirror struct {
 	CreatedUnix    timeutil.TimeStamp `xorm:"created"`
 	LastUpdateUnix timeutil.TimeStamp `xorm:"INDEX last_update"`
 	LastError      string             `xorm:"text"`
+
+	// PublicProvider enables the "public mirror" mode for this push mirror: the remote is the public face of the
+	// repository, its stars/forks/issues/pull requests are synced back and starring, forking or opening issues and
+	// pull requests redirects there. Empty when disabled. See PublicMirrorProvider* for the allowed values.
+	PublicProvider     string             `xorm:"VARCHAR(20) NOT NULL DEFAULT ''"`
+	PublicHTMLURL      string             `xorm:"VARCHAR(2048)"`
+	PublicStars        int                `xorm:"NOT NULL DEFAULT 0"`
+	PublicForks        int                `xorm:"NOT NULL DEFAULT 0"`
+	PublicWatchers     int                `xorm:"NOT NULL DEFAULT 0"`
+	PublicSyncedUnix   timeutil.TimeStamp // cursor: upstream items updated before this time are synced
+	PublicLastSyncUnix timeutil.TimeStamp
+	PublicLastError    string `xorm:"text"`
 }
 
 type PushMirrorOptions struct {

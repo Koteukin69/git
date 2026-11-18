@@ -356,6 +356,9 @@ func getPullInfo(ctx *context.Context) (issue *issues_model.Issue, ok bool) {
 	}
 	ctx.Data["Title"] = fmt.Sprintf("#%d - %s", issue.Index, emoji.ReplaceAliases(issue.Title))
 	ctx.Data["Issue"] = issue
+	if item := publicMirrorItem(ctx, issue); item != nil {
+		ctx.Data["PublicMirrorItem"] = item
+	}
 
 	if !issue.IsPull {
 		ctx.Redirect(issue.Link())

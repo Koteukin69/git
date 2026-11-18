@@ -18,6 +18,7 @@ import (
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/metrics"
 	"forgejo.org/modules/public"
+	"forgejo.org/modules/publicmirror"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/storage"
 	"forgejo.org/modules/structs"
@@ -1204,8 +1205,8 @@ func registerRoutes(m *web.Route) {
 		m.Post("/accept_transfer", repo.ActionTransfer(true))
 		m.Post("/reject_transfer", repo.ActionTransfer(false))
 		if !setting.Repository.DisableStars {
-			m.Post("/star", repo.ActionStar(true))
-			m.Post("/unstar", repo.ActionStar(false))
+			m.Post("/star", repo.RedirectToPublicMirror((*publicmirror.Upstream).StarURL), repo.ActionStar(true))
+			m.Post("/unstar", repo.RedirectToPublicMirror((*publicmirror.Upstream).StarURL), repo.ActionStar(false))
 		}
 	}, reqSignIn, context.RepoAssignment, context.UnitTypes())
 
@@ -1223,7 +1224,7 @@ func registerRoutes(m *web.Route) {
 		m.Get("/compare", repo.MustBeNotEmpty, reqRepoCodeReader, repo.SetEditorconfigIfExists, ignSignIn, repo.SetDiffViewStyle, repo.SetWhitespaceBehavior, repo.CompareDiff)
 		m.Combo("/compare/*", repo.MustBeNotEmpty, reqRepoCodeReader, repo.SetEditorconfigIfExists).
 			Get(repo.SetDiffViewStyle, repo.SetWhitespaceBehavior, repo.CompareDiff).
-			Post(reqSignIn, context.RepoMustNotBeArchived(), reqRepoPullsReader, repo.MustAllowPulls, web.Bind(forms.CreateIssueForm{}), repo.SetWhitespaceBehavior, repo.CompareAndPullRequestPost)
+			Post(reqSignIn, context.RepoMustNotBeArchived(), reqRepoPullsReader, repo.MustAllowPulls, repo.RedirectToPublicMirror((*publicmirror.Upstream).NewPullURL), web.Bind(forms.CreateIssueForm{}), repo.SetWhitespaceBehavior, repo.CompareAndPullRequestPost)
 		m.Group("/{type:^(issues|pulls)$}", func() {
 			m.Group("/{index}", func() {
 				m.Get("/info", repo.GetIssueInfo)
@@ -1236,7 +1237,7 @@ func registerRoutes(m *web.Route) {
 	// Grouping for those endpoints that do require authentication
 	m.Group("/{username}/{reponame}", func() {
 		if !setting.Repository.DisableForks {
-			m.Combo("/fork", reqRepoCodeReader).Get(repo.Fork).
+			m.Combo("/fork", reqRepoCodeReader, repo.RedirectToPublicMirror((*publicmirror.Upstream).ForkURL)).Get(repo.Fork).
 				Post(web.Bind(forms.CreateRepoForm{}), repo.ForkPost)
 		}
 		m.Group("/issues", func() {
@@ -1244,7 +1245,7 @@ func registerRoutes(m *web.Route) {
 				m.Combo("").Get(context.RepoRef(), repo.NewIssue).
 					Post(web.Bind(forms.CreateIssueForm{}), repo.NewIssuePost)
 				m.Get("/choose", context.RepoRef(), repo.NewIssueChooseTemplate)
-			})
+			}, repo.RedirectToPublicMirror((*publicmirror.Upstream).NewIssueURL))
 			m.Get("/search", repo.ListIssues)
 		}, context.RepoMustNotBeArchived(), reqRepoIssueReader)
 		// FIXME: should use different URLs but mostly same logic for comments of issue and pull request.

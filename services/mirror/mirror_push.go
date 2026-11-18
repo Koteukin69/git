@@ -177,6 +177,11 @@ func SyncPushMirror(ctx context.Context, mirrorID int64) bool {
 
 	log.Trace("SyncPushMirror [mirror: %d][repo: %-v]: Finished", m.ID, m.Repo)
 
+	if m.IsPublic() {
+		// new commits may change the mergeability of the synced pull requests, and it is a good time to refresh
+		AddPublicMirrorToQueue(m.ID)
+	}
+
 	return err == nil
 }
 

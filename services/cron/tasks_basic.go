@@ -17,6 +17,7 @@ import (
 	"forgejo.org/services/migrations"
 	mirror_service "forgejo.org/services/mirror"
 	packages_cleanup_service "forgejo.org/services/packages/cleanup"
+	publicmirror_service "forgejo.org/services/publicmirror"
 	repo_service "forgejo.org/services/repository"
 	archiver_service "forgejo.org/services/repository/archiver"
 )
@@ -39,6 +40,16 @@ func registerUpdateMirrorTask() {
 	}, func(ctx context.Context, _ *user_model.User, cfg Config) error {
 		umtc := cfg.(*UpdateMirrorTaskConfig)
 		return mirror_service.Update(ctx, umtc.PullLimit, umtc.PushLimit)
+	})
+}
+
+func registerSyncPublicMirrorsTask() {
+	RegisterTaskFatal("sync_public_mirrors", &BaseConfig{
+		Enabled:    true,
+		RunAtStart: false,
+		Schedule:   "@every 15m",
+	}, func(ctx context.Context, _ *user_model.User, _ Config) error {
+		return publicmirror_service.SyncAll(ctx)
 	})
 }
 
@@ -159,6 +170,7 @@ func registerCleanupPackages() {
 func initBasicTasks() {
 	if setting.Mirror.Enabled {
 		registerUpdateMirrorTask()
+		registerSyncPublicMirrorsTask()
 	}
 	registerRepoHealthCheck()
 	registerCheckRepoStats()
