@@ -142,7 +142,7 @@ func GetTotalPullsBadge(ctx *app_context.Context) {
 }
 
 func GetStarsBadge(ctx *app_context.Context) {
-	redirectToBadge(ctx, "stars", fmt.Sprintf("%d", ctx.Repo.Repository.NumStars), "blue")
+	redirectToBadge(ctx, "stars", fmt.Sprintf("%d", ctx.Repo.Repository.DisplayNumStars()), "blue")
 }
 
 func GetLatestReleaseBadge(ctx *app_context.Context) {

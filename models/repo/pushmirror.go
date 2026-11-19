@@ -141,8 +141,13 @@ var DeletePushMirrors = deletePushMirrors
 
 func deletePushMirrors(ctx context.Context, opts PushMirrorOptions) error {
 	if opts.RepoID > 0 {
-		_, err := db.Delete[PushMirror](ctx, opts)
-		return err
+		return db.WithTx(ctx, func(ctx context.Context) error {
+			if _, err := db.Delete[PushMirror](ctx, opts); err != nil {
+				return err
+			}
+			// the deleted push mirror may have been the public mirror
+			return UpdateRepositoryPublicMirrorCounts(ctx, opts.RepoID)
+		})
 	}
 	return util.NewInvalidArgumentErrorf("repoID required and must be set")
 }

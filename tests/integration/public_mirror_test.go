@@ -21,6 +21,7 @@ import (
 	publicmirror_service "forgejo.org/services/publicmirror"
 	"forgejo.org/tests"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,6 +43,41 @@ func newFakeGitHub(t *testing.T, stars, forks int) *httptest.Server {
 	}))
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// assertPublicMirrorCounts checks the stars and forks counts of user2/repo1 everywhere they are shown outside of the
+// repository header: lists, sorting, the API and the admin list.
+func assertPublicMirrorCounts(t *testing.T, session *TestSession, stars, forks, watchers int) {
+	t.Helper()
+
+	for _, link := range []string{"/explore/repos?q=repo1", "/user2?q=repo1"} {
+		resp := session.MakeRequest(t, NewRequest(t, "GET", link), http.StatusOK)
+		doc := NewHTMLParser(t, resp.Body)
+		assert.True(t, strings.HasPrefix(doc.Find(`a[href="/user2/repo1/stars"]`).AttrOr("aria-label", ""), strconv.Itoa(stars)+" "), link)
+		assert.True(t, strings.HasPrefix(doc.Find(`a[href="/user2/repo1/forks"]`).AttrOr("aria-label", ""), strconv.Itoa(forks)+" "), link)
+	}
+
+	// sorting by stars or forks uses the same counts
+	for _, sort := range []string{"moststars", "mostforks"} {
+		resp := session.MakeRequest(t, NewRequest(t, "GET", "/explore/repos?sort="+sort), http.StatusOK)
+		first := NewHTMLParser(t, resp.Body).Find(".flex-item").First().Find(".flex-item-title a.name").Last().AttrOr("href", "")
+		if stars > 1 && forks > 1 {
+			assert.Equal(t, "/user2/repo1", first, sort)
+		} else {
+			assert.NotEqual(t, "/user2/repo1", first, sort)
+		}
+	}
+
+	var apiRepo struct {
+		Stars    int `json:"stars_count"`
+		Forks    int `json:"forks_count"`
+		Watchers int `json:"watchers_count"`
+	}
+	resp := MakeRequest(t, NewRequest(t, "GET", "/api/v1/repos/user2/repo1"), http.StatusOK)
+	DecodeJSON(t, resp, &apiRepo)
+	assert.Equal(t, stars, apiRepo.Stars)
+	assert.Equal(t, forks, apiRepo.Forks)
+	assert.Equal(t, watchers, apiRepo.Watchers)
 }
 
 func TestPublicPushMirror(t *testing.T) {
@@ -117,6 +153,22 @@ func TestPublicPushMirror(t *testing.T) {
 		resp := session.MakeRequest(t, NewRequest(t, "GET", "/user2/repo1/settings"), http.StatusOK)
 		doc := NewHTMLParser(t, resp.Body)
 		assert.Equal(t, upstreamRepo, doc.Find(".push-mirror-public a").AttrOr("href", ""))
+	})
+
+	localRepo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: repo.ID})
+	t.Run("the counts of the public mirror are used everywhere", func(t *testing.T) {
+		defer tests.PrintCurrentTest(t)()
+		assertPublicMirrorCounts(t, session, 1234, 56, 1)
+		// the local counts are kept, the "check repo stats" cron task recomputes them
+		assert.Equal(t, 0, localRepo.NumStars)
+		assert.Equal(t, 0, localRepo.NumForks)
+
+		admin := loginUser(t, "user1")
+		resp := admin.MakeRequest(t, NewRequest(t, "GET", "/admin/repos?q=repo1"), http.StatusOK)
+		row := NewHTMLParser(t, resp.Body).Find(`table tbody tr:has(a[href="/user2/repo1"]) td`)
+		cells := []string{}
+		row.Each(func(_ int, td *goquery.Selection) { cells = append(cells, strings.TrimSpace(td.Text())) })
+		assert.Contains(t, strings.Join(cells, "|"), "|1|1234|56|")
 	})
 
 	t.Run("header links to the public mirror", func(t *testing.T) {
@@ -249,6 +301,7 @@ func TestPublicPushMirror(t *testing.T) {
 			"push_mirror_public":   "",
 		}), http.StatusSeeOther)
 		assert.Empty(t, unittest.AssertExistsAndLoadBean(t, &repo_model.PushMirror{ID: mirror.ID}).PublicProvider)
+		assertPublicMirrorCounts(t, session, localRepo.NumStars, localRepo.NumForks, localRepo.NumWatches)
 
 		assertNotRedirectedHome(t)
 		session.MakeRequest(t, NewRequest(t, "GET", "/user2/repo1/issues/new"), http.StatusOK)
