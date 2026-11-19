@@ -39,24 +39,24 @@
 						{{end}}
 						{{if not $.DisableStars}}
 							<a class="flex-text-inline" href="{{.Link}}/stars"
-								aria-label="{{ctx.Locale.TrPluralString .NumStars "stars.n_stars" (printf "%d" .NumStars)}}"
-								{{if ge .NumStars 1000}}
-									data-tooltip-content="{{ctx.Locale.TrPluralString .NumStars "stars.n_stars" (ctx.Locale.PrettyNumber .NumStars)}}"
+								aria-label="{{ctx.Locale.TrPluralString .DisplayNumStars "stars.n_stars" (printf "%d" .DisplayNumStars)}}"
+								{{if ge .DisplayNumStars 1000}}
+									data-tooltip-content="{{ctx.Locale.TrPluralString .DisplayNumStars "stars.n_stars" (ctx.Locale.PrettyNumber .DisplayNumStars)}}"
 								{{end}}
 								>
 								{{svg "octicon-star" 16}}
-								{{CountFmt .NumStars}}
+								{{CountFmt .DisplayNumStars}}
 							</a>
 						{{end}}
 						{{if not $.DisableForks}}
 							<a class="flex-text-inline" href="{{.Link}}/forks"
-								aria-label="{{ctx.Locale.TrPluralString .NumForks "fork.n_forks" (printf "%d" .NumForks)}}"
-								{{if ge .NumForks 1000}}
-									data-tooltip-content="{{ctx.Locale.TrPluralString .NumForks "fork.n_forks" (ctx.Locale.PrettyNumber .NumForks)}}"
+								aria-label="{{ctx.Locale.TrPluralString .DisplayNumForks "fork.n_forks" (printf "%d" .DisplayNumForks)}}"
+								{{if ge .DisplayNumForks 1000}}
+									data-tooltip-content="{{ctx.Locale.TrPluralString .DisplayNumForks "fork.n_forks" (ctx.Locale.PrettyNumber .DisplayNumForks)}}"
 								{{end}}
 								>
 								{{svg "octicon-repo-forked" 16}}
-								{{CountFmt .NumForks}}
+								{{CountFmt .DisplayNumForks}}
 							</a>
 						{{end}}
 					</div>

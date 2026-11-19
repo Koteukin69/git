@@ -705,7 +705,7 @@ func SearchRepo(ctx *context.Context) {
 				Private:  repo.IsPrivate,
 				Template: repo.IsTemplate,
 				Mirror:   repo.IsMirror,
-				Stars:    repo.NumStars,
+				Stars:    repo.DisplayNumStars(),
 				HTMLURL:  repo.HTMLURL(),
 				Link:     repo.Link(),
 				Internal: !repo.IsPrivate && repo.Owner.Visibility == api.VisibleTypePrivate,

@@ -155,6 +155,15 @@ type Repository struct {
 	NumClosedProjects   int `xorm:"NOT NULL DEFAULT 0"`
 	NumOpenProjects     int `xorm:"-"`
 
+	// HasPublicMirror is set while a push mirror of the repository is used as public mirror (see public_mirror.go).
+	// The Public* counts are then synced from the upstream and shown instead of the local ones, see DisplayNumStars.
+	// They are kept apart from NumStars/NumForks/NumWatches, which are recomputed from the local stars, forks and
+	// watches by the "check repo stats" cron task.
+	HasPublicMirror  bool `xorm:"INDEX NOT NULL DEFAULT false"`
+	PublicNumStars   int  `xorm:"NOT NULL DEFAULT 0"`
+	PublicNumForks   int  `xorm:"NOT NULL DEFAULT 0"`
+	PublicNumWatches int  `xorm:"NOT NULL DEFAULT 0"`
+
 	IsPrivate  bool `xorm:"INDEX"`
 	IsEmpty    bool `xorm:"INDEX"`
 	IsArchived bool `xorm:"INDEX"`

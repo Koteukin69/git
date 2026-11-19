@@ -103,16 +103,74 @@ func SetPushMirrorPublicProvider(ctx context.Context, m *PushMirror, provider st
 			m.PublicSyncedUnix = 0
 		}
 		m.PublicProvider = provider
-		_, err := db.GetEngine(ctx).ID(m.ID).Cols("public_provider", "public_synced_unix").Update(m)
-		return err
+		if _, err := db.GetEngine(ctx).ID(m.ID).Cols("public_provider", "public_synced_unix").Update(m); err != nil {
+			return err
+		}
+		return UpdateRepositoryPublicMirrorCounts(ctx, m.RepoID)
 	})
 }
 
 // UpdatePushMirrorPublicStatus saves the public mirror sync status (counters, cursor and error).
 func UpdatePushMirrorPublicStatus(ctx context.Context, m *PushMirror) error {
-	_, err := db.GetEngine(ctx).ID(m.ID).Cols("public_stars", "public_forks", "public_watchers",
-		"public_synced_unix", "public_last_sync_unix", "public_last_error").Update(m)
+	return db.WithTx(ctx, func(ctx context.Context) error {
+		if _, err := db.GetEngine(ctx).ID(m.ID).Cols("public_stars", "public_forks", "public_watchers",
+			"public_synced_unix", "public_last_sync_unix", "public_last_error").Update(m); err != nil {
+			return err
+		}
+		return UpdateRepositoryPublicMirrorCounts(ctx, m.RepoID)
+	})
+}
+
+// UpdateRepositoryPublicMirrorCounts copies the stars, forks and watchers counts of the public mirror of a
+// repository into the repository, so that lists, sorting and the API can use them without loading the push mirrors.
+// They are cleared when the repository has no (usable) public mirror anymore, the local counts are used again then.
+// It must be called whenever a push mirror becomes, stops being or is deleted while being the public mirror, and
+// when the counts are synced.
+func UpdateRepositoryPublicMirrorCounts(ctx context.Context, repoID int64) error {
+	cols := map[string]any{
+		"has_public_mirror":  false,
+		"public_num_stars":   0,
+		"public_num_forks":   0,
+		"public_num_watches": 0,
+	}
+	m, err := GetPublicPushMirror(ctx, repoID)
+	if err != nil {
+		return err
+	}
+	if m != nil && m.PublicUpstream() != nil {
+		cols["has_public_mirror"] = true
+		cols["public_num_stars"] = m.PublicStars
+		cols["public_num_forks"] = m.PublicForks
+		cols["public_num_watches"] = m.PublicWatchers
+	}
+	// NoAutoTime: syncing the counts is not an update of the repository
+	_, err = db.GetEngine(ctx).Table("repository").Where("id = ?", repoID).NoAutoTime().Update(cols)
 	return err
+}
+
+// DisplayNumStars returns the number of stars to show for the repository: the stars of the upstream while it has a
+// public mirror (starring redirects there), the local stars otherwise.
+func (repo *Repository) DisplayNumStars() int {
+	if repo.HasPublicMirror {
+		return repo.PublicNumStars
+	}
+	return repo.NumStars
+}
+
+// DisplayNumForks returns the number of forks to show for the repository, see DisplayNumStars.
+func (repo *Repository) DisplayNumForks() int {
+	if repo.HasPublicMirror {
+		return repo.PublicNumForks
+	}
+	return repo.NumForks
+}
+
+// DisplayNumWatches returns the number of watchers to show for the repository, see DisplayNumStars.
+func (repo *Repository) DisplayNumWatches() int {
+	if repo.HasPublicMirror {
+		return repo.PublicNumWatches
+	}
+	return repo.NumWatches
 }
 
 // GetPublicPushMirrorsToSync returns all public mirrors of repositories which are not archived.

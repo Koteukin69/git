@@ -20,10 +20,11 @@ const (
 	SearchOrderByNewest                SearchOrderBy = "created_unix DESC"
 	SearchOrderByID                    SearchOrderBy = "id ASC"
 	SearchOrderByIDReverse             SearchOrderBy = "id DESC"
-	SearchOrderByStars                 SearchOrderBy = "num_stars ASC"
-	SearchOrderByStarsReverse          SearchOrderBy = "num_stars DESC"
-	SearchOrderByForks                 SearchOrderBy = "num_forks ASC"
-	SearchOrderByForksReverse          SearchOrderBy = "num_forks DESC"
+	// stars and forks of a repository with a public mirror are the ones of the upstream, see Repository.DisplayNumStars
+	SearchOrderByStars        SearchOrderBy = "CASE WHEN has_public_mirror = true THEN public_num_stars ELSE num_stars END ASC"
+	SearchOrderByStarsReverse SearchOrderBy = "CASE WHEN has_public_mirror = true THEN public_num_stars ELSE num_stars END DESC"
+	SearchOrderByForks        SearchOrderBy = "CASE WHEN has_public_mirror = true THEN public_num_forks ELSE num_forks END ASC"
+	SearchOrderByForksReverse SearchOrderBy = "CASE WHEN has_public_mirror = true THEN public_num_forks ELSE num_forks END DESC"
 )
 
 const (
